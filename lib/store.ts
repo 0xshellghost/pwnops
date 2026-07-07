@@ -25,7 +25,10 @@ export async function getUsers() {
   return users.map(u => ({ ...u, passwordHash: '' })); 
 }
 export async function getUserById(id: string) { return prisma.user.findUnique({ where: { id } }); }
-export async function findUserByEmail(email: string) { return prisma.user.findUnique({ where: { email } }); }
+export async function findUserByEmail(email: string) { 
+  await seedIfEmpty();
+  return prisma.user.findUnique({ where: { email } }); 
+}
 export async function addUser(u: any) { return prisma.user.create({ data: u }); }
 export async function updateUserRole(id: string, role: string) {
   return prisma.user.update({ where: { id }, data: { role } });
