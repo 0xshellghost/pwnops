@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PwnOps
+
+PwnOps is a high-fidelity, high-performance automated vulnerability management and incident response platform. It provides a real-time dashboard for SOC (Security Operations Center) teams to triage incidents, manage vulnerabilities, and orchestrate infrastructure scans.
+
+## Features
+
+- **Cyber-Themed Design System**: Built with Tailwind CSS 4, featuring glassmorphism, neon accents, and custom animations.
+- **Incident Management**: Interactive drag-and-drop Kanban board for incident triage.
+- **Vulnerability Tracking**: Advanced data tables for managing CVEs with real-time filtering.
+- **Tool Orchestration**: Trigger and monitor simulated security scans with terminal-style output.
+- **Role-Based Access Control (RBAC)**: Secure JWT authentication with strict route protection via Next.js Proxy.
+- **Edge Security**: Comprehensive security headers (HSTS, CSP, X-Frame-Options) and rate limiting.
+
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router, Server Components)
+- **Styling**: Tailwind CSS 4
+- **Authentication**: JWT (JSON Web Tokens) via `jose`, bcryptjs for password hashing
+- **State**: In-memory singleton (`lib/store.ts`) for demonstration purposes
 
 ## Getting Started
 
-First, run the development server:
+1. **Install Dependencies**
+   \`\`\`bash
+   npm install
+   \`\`\`
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+2. **Environment Configuration**
+   Copy the example environment file and set your secure `JWT_SECRET`.
+   \`\`\`bash
+   cp .env.example .env.local
+   \`\`\`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. **Development Server**
+   Start the development server with Turbopack:
+   \`\`\`bash
+   npm run dev
+   \`\`\`
+   Navigate to [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Pre-Seeded Accounts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The in-memory datastore initializes with the following accounts for testing:
 
-## Learn More
+| Role       | Email                | Password      | Access Level                    |
+|------------|----------------------|---------------|---------------------------------|
+| Admin      | \`admin@pwnops.sec\`   | \`admin123\`    | Full access, user management    |
+| Analyst    | \`j.doe@pwnops.sec\`   | \`analyst123\`  | Incident & scan management      |
+| Analyst    | \`m.smith@pwnops.sec\` | \`analyst123\`  | Incident & scan management      |
+| Viewer     | \`viewer@pwnops.sec\`  | \`viewer123\`   | Read-only access                |
 
-To learn more about Next.js, take a look at the following resources:
+## Production Deployment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+To run PwnOps in a production environment:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Create an optimized production build:
+   \`\`\`bash
+   npm run build
+   \`\`\`
 
-## Deploy on Vercel
+2. Start the production server:
+   \`\`\`bash
+   npm start
+   \`\`\`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Ensure `NODE_ENV=production` is set to activate strict security headers.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Architecture Notes
+
+- **Proxy/Middleware**: Route protection and rate limiting are handled efficiently at the edge using `proxy.ts` (the Next.js 16 replacement for `middleware.ts`).
+- **Data Persistence**: The current implementation uses an in-memory `store.ts` to simulate a database. For true production use, swap out the repository methods in `store.ts` with an ORM like Prisma (e.g., connecting to PostgreSQL).
+- **Security**: Form submissions use CSRF protection (Next.js defaults) and cookie-based authentication with `HttpOnly` and `SameSite=Lax` attributes.
