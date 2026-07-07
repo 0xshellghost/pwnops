@@ -57,17 +57,15 @@ export async function GET(request: NextRequest) {
     }
 
     // 3. Find or Create User in Store
-    let user = findUserByEmail(primaryEmail);
+    let user = await findUserByEmail(primaryEmail);
     if (!user) {
-      user = {
-        id: uuid(),
+      const newUserObj = {
         name: googleUser.name || 'Google User',
         email: primaryEmail,
         passwordHash: '', // OAuth users don't use a password hash
         role: 'analyst', // Default role for new users
-        createdAt: new Date().toISOString(),
       };
-      addUser(user);
+      user = await addUser(newUserObj);
     }
 
     // 4. Issue JWT and set cookie

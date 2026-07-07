@@ -10,27 +10,44 @@ export async function GET(request: Request) {
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   // Auto-progress running scans based on elapsed time
-  const scans = getScans();
+  const scans = await getScans();
   const now = Date.now();
   for (const scan of scans) {
     if (scan.status === 'running' || scan.status === 'queued') {
       const elapsed = now - new Date(scan.startedAt).getTime();
       const progressTime = 15000; // 15 seconds to complete
       const progress = Math.min(100, Math.round((elapsed / progressTime) * 100));
-      scan.progress = progress;
+      
+      let changed = false;
       if (progress >= 100) {
         scan.status = 'completed';
         scan.completedAt = new Date().toISOString();
         if (!scan.results) {
           scan.results = generateResults(scan.toolName, scan.target);
         }
+        changed = true;
       } else if (progress > 0 && scan.status === 'queued') {
         scan.status = 'running';
+        changed = true;
+      }
+      
+      if (scan.progress !== progress) {
+        scan.progress = progress;
+        changed = true;
+      }
+
+      if (changed) {
+        await updateScan(scan.id, {
+          progress: scan.progress,
+          status: scan.status,
+          results: scan.results,
+          completedAt: scan.completedAt,
+        });
       }
     }
   }
 
-  return Response.json({ scans, threatFeed: getThreatFeed() });
+  return Response.json({ scans, threatFeed: await getThreatFeed() });
 }
 
 export async function POST(request: Request) {
@@ -45,7 +62,7 @@ export async function POST(request: Request) {
     return Response.json({ error: 'toolName and target are required' }, { status: 400 });
   }
 
-  const scan = addScan({
+  const scan = await addScan({
     toolName,
     target,
     status: 'queued',

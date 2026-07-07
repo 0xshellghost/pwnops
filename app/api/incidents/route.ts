@@ -8,7 +8,7 @@ import type { IncidentStatus } from '@/lib/types';
 export async function GET(request: Request) {
   const user = await getAuthUser(request);
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  return Response.json({ incidents: getIncidents() });
+  return Response.json({ incidents: await getIncidents() });
 }
 
 export async function POST(request: Request) {
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Title and severity are required' }, { status: 400 });
   }
 
-  const incident = addIncident({
+  const incident = await addIncident({
     title,
     description: description || '',
     severity,
@@ -49,7 +49,7 @@ export async function PATCH(request: Request) {
     return Response.json({ error: 'id and status are required' }, { status: 400 });
   }
 
-  const incident = updateIncidentStatus(id, status as IncidentStatus);
+  const incident = await updateIncidentStatus(id, status as IncidentStatus);
   if (!incident) return Response.json({ error: 'Incident not found' }, { status: 404 });
 
   return Response.json({ incident });

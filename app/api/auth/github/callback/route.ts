@@ -62,17 +62,15 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. Find or Create User in Store
-    let user = findUserByEmail(primaryEmail);
+    let user = await findUserByEmail(primaryEmail);
     if (!user) {
-      user = {
-        id: uuid(),
+      const newUserObj = {
         name: ghUser.name || ghUser.login || 'GitHub User',
         email: primaryEmail,
         passwordHash: '', // OAuth users don't use a password hash
         role: 'analyst', // Default role for new users
-        createdAt: new Date().toISOString(),
       };
-      addUser(user);
+      user = await addUser(newUserObj);
     }
 
     // 5. Issue JWT and set cookie
