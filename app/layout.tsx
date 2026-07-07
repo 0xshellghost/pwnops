@@ -21,6 +21,9 @@ export const metadata: Metadata = {
     default: "PwnOps — Automated Vulnerability Management & Incident Response",
     template: "%s | PwnOps",
   },
+  verification: {
+    google: 'FuE3SufSZlhSS47hxR2BoGtucMQocDdfcXGPx_tA4uk',
+  },
   description:
     "Enterprise-grade automated defense for cloud-native environments. Detect, prioritize, and remediate critical vulnerabilities across your entire attack surface.",
   keywords: [
