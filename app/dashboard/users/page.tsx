@@ -12,13 +12,18 @@ const ROLES = ['admin', 'analyst', 'viewer'] as const;
 export default function UsersPage() {
   const { user: me } = useAuth();
   const [users, setUsers] = useState<UserInfo[]>([]);
+  const [teamName, setTeamName] = useState('Team Management');
   const [showAddModal, setShowAddModal] = useState(false);
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'viewer' });
   const [error, setError] = useState('');
 
   const fetchUsers = async () => {
     const res = await fetch('/api/users');
-    if (res.ok) { const d = await res.json(); setUsers(d.users || []); }
+    if (res.ok) { 
+      const d = await res.json(); 
+      setUsers(d.users || []); 
+      if (d.organization?.name) setTeamName(d.organization.name);
+    }
   };
 
   useEffect(() => { fetchUsers(); }, []);
@@ -62,7 +67,7 @@ export default function UsersPage() {
   return (
     <div className="animate-fade-in space-y-5">
       <div>
-        <h1 className="text-xl font-bold">Team Management</h1>
+        <h1 className="text-xl font-bold">{teamName}</h1>
         <p className="text-text-muted text-sm">Manage operator access and role assignments.</p>
       </div>
 

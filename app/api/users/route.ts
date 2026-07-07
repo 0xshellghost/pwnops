@@ -2,14 +2,18 @@
 // PwnOps — Users API
 // ──────────────────────────────────────────────────────────
 import { getAuthUser } from '@/lib/auth';
-import { getUsers, updateUserRole, addUser, findUserByEmail } from '@/lib/store';
+import { getUsers, updateUserRole, addUser, findUserByEmail, getOrganizationById } from '@/lib/store';
 import type { Role } from '@/lib/types';
 import bcrypt from 'bcryptjs';
 
 export async function GET(request: Request) {
   const user = await getAuthUser(request);
   if (!user || !user.organizationId) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  return Response.json({ users: await getUsers(user.organizationId) });
+  
+  const org = await getOrganizationById(user.organizationId);
+  const users = await getUsers(user.organizationId);
+  
+  return Response.json({ users, organization: org });
 }
 
 export async function PATCH(request: Request) {

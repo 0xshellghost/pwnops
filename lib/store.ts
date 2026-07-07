@@ -19,6 +19,8 @@ export const prisma = globalForPrisma.prisma || createPrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 // ── User CRUD ────────────────────────────────────────────
+export async function getOrganizationById(id: string) { return prisma.organization.findUnique({ where: { id } }); }
+
 export async function getUsers(organizationId: string) { 
   await seedIfEmpty();
   const users = await prisma.user.findMany({ where: { organizationId } });
