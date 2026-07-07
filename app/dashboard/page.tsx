@@ -27,8 +27,11 @@ function AnimatedNumber({ target, suffix = '' }: { target: number; suffix?: stri
 export default function DashboardHome() {
   const [data, setData] = useState<DashData | null>(null);
 
-  useEffect(() => {
-    async function load() {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  async function loadData() {
+    setIsRefreshing(true);
+    try {
       const [incRes, vulnRes, scanRes] = await Promise.all([
         fetch('/api/incidents'), fetch('/api/vulnerabilities'), fetch('/api/scans'),
       ]);
@@ -40,8 +43,13 @@ export default function DashboardHome() {
         vulns: vul.vulnerabilities || [],
         threatFeed: scn.threatFeed || [],
       });
+    } finally {
+      setIsRefreshing(false);
     }
-    load();
+  }
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   if (!data) return (
@@ -109,7 +117,9 @@ export default function DashboardHome() {
           <div className="card-glass p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg">Recent Detections</h3>
-              <button className="text-text-muted hover:text-accent-cyan text-sm transition-colors">↻ Refresh</button>
+              <button onClick={loadData} disabled={isRefreshing} className="text-text-muted hover:text-accent-cyan text-sm transition-colors disabled:opacity-50">
+                {isRefreshing ? '↻ Refreshing...' : '↻ Refresh'}
+              </button>
             </div>
             <div className="overflow-x-auto">
               <table className="data-table">
