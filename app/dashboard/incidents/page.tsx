@@ -23,6 +23,7 @@ export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [filter, setFilter] = useState<string | null>(null);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
 
   const fetchIncidents = useCallback(async () => {
@@ -70,15 +71,15 @@ export default function IncidentsPage() {
       <div className="flex gap-3 mb-4">
         <div className="relative">
           <button
-            onClick={() => setFilter(filter ? null : 'critical')}
+            onClick={() => setShowFilterDropdown(!showFilterDropdown)}
             className="btn-outline text-xs"
           >
-            ≡ Filter {filter && `(${filter})`}
+            ≡ Filter {filter && `(${filter.toUpperCase()})`}
           </button>
-          {filter && (
+          {showFilterDropdown && (
             <div className="absolute top-full left-0 mt-1 bg-bg-card border border-border rounded-lg p-2 z-20 space-y-1 min-w-[120px]">
               {[null, ...SEVERITIES].map(s => (
-                <button key={s || 'all'} onClick={() => setFilter(s)}
+                <button key={s || 'all'} onClick={() => { setFilter(s); setShowFilterDropdown(false); }}
                   className={`block w-full text-left px-3 py-1.5 rounded text-xs ${filter === s ? 'bg-accent-cyan/10 text-accent-cyan' : 'text-text-secondary hover:bg-bg-card-hover'}`}
                 >
                   {s ? s.toUpperCase() : 'ALL'}
