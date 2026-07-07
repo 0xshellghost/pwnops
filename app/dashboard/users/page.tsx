@@ -12,6 +12,9 @@ const ROLES = ['admin', 'analyst', 'viewer'] as const;
 export default function UsersPage() {
   const { user: me } = useAuth();
   const [users, setUsers] = useState<UserInfo[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'viewer' });
+  const [error, setError] = useState('');
 
   const fetchUsers = async () => {
     const res = await fetch('/api/users');
@@ -27,6 +30,25 @@ export default function UsersPage() {
       body: JSON.stringify({ id, role }),
     });
     fetchUsers();
+  };
+
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    const res = await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newUser)
+    });
+    
+    if (res.ok) {
+      setShowAddModal(false);
+      setNewUser({ name: '', email: '', password: '', role: 'viewer' });
+      fetchUsers();
+    } else {
+      const data = await res.json();
+      setError(data.error || 'Failed to add user');
+    }
   };
 
   const roleBadge = (r: string) => {
@@ -62,7 +84,14 @@ export default function UsersPage() {
 
       {/* Team members */}
       <div>
-        <h3 className="font-bold mb-3">All Operators ({users.length})</h3>
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="font-bold">All Operators ({users.length})</h3>
+          {isAdmin && (
+            <button onClick={() => setShowAddModal(true)} className="btn-primary text-sm px-3 py-1.5">
+              + Add Member
+            </button>
+          )}
+        </div>
         <div className="space-y-3 stagger">
           {users.map(u => (
             <div key={u.id} className="card-glass p-4 flex items-center gap-3">
@@ -100,6 +129,81 @@ export default function UsersPage() {
           <p className="text-text-muted text-sm">
             Role management requires <span className="text-accent-red font-bold">ADMIN</span> privileges.
           </p>
+        </div>
+      )}
+
+      {/* Add User Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="card-glass w-full max-w-md p-6">
+            <h2 className="text-xl font-bold mb-4">Add Team Member</h2>
+            <form onSubmit={handleAddUser} className="space-y-4">
+              {error && <div className="text-accent-red text-sm font-bold bg-accent-red/10 p-2 rounded border border-accent-red/20">{error}</div>}
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={newUser.name}
+                  onChange={e => setNewUser({ ...newUser, name: e.target.value })}
+                  className="w-full bg-bg-card border border-border rounded p-2 focus:border-accent-cyan outline-none transition-colors"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={newUser.email}
+                  onChange={e => setNewUser({ ...newUser, email: e.target.value })}
+                  className="w-full bg-bg-card border border-border rounded p-2 focus:border-accent-cyan outline-none transition-colors"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Temporary Password</label>
+                <input
+                  type="text"
+                  required
+                  value={newUser.password}
+                  onChange={e => setNewUser({ ...newUser, password: e.target.value })}
+                  className="w-full bg-bg-card border border-border rounded p-2 focus:border-accent-cyan outline-none transition-colors"
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Initial Role</label>
+                <select
+                  value={newUser.role}
+                  onChange={e => setNewUser({ ...newUser, role: e.target.value })}
+                  className="w-full bg-bg-card border border-border rounded p-2 focus:border-accent-cyan outline-none transition-colors"
+                >
+                  <option value="viewer">Viewer (Read Only)</option>
+                  <option value="analyst">Analyst (Triage & Manage)</option>
+                  <option value="admin">Admin (Full Access)</option>
+                </select>
+              </div>
+              
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 border border-border rounded p-2 hover:bg-bg-card-hover transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 btn-primary rounded p-2 font-medium"
+                >
+                  Create Member
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
