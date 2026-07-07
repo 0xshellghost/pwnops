@@ -7,14 +7,14 @@ import type { VulnStatus } from '@/lib/types';
 
 export async function GET(request: Request) {
   const user = await getAuthUser(request);
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!user || !user.organizationId) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   const url = new URL(request.url);
   const severity = url.searchParams.get('severity');
   const status = url.searchParams.get('status');
   const search = url.searchParams.get('search')?.toLowerCase();
 
-  let vulns = await getVulnerabilities();
+  let vulns = await getVulnerabilities(user.organizationId);
 
   if (severity && severity !== 'all') vulns = vulns.filter((v: any) => v.severity === severity);
   if (status && status !== 'all') vulns = vulns.filter((v: any) => v.status === status);

@@ -7,8 +7,8 @@ import type { IncidentStatus } from '@/lib/types';
 
 export async function GET(request: Request) {
   const user = await getAuthUser(request);
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  return Response.json({ incidents: await getIncidents() });
+  if (!user || !user.organizationId) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  return Response.json({ incidents: await getIncidents(user.organizationId) });
 }
 
 export async function POST(request: Request) {
@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     assigneeName: assigneeName || null,
     createdBy: user.id,
     mitigationSteps: [],
+    organizationId: user.organizationId,
   });
 
   return Response.json({ incident }, { status: 201 });

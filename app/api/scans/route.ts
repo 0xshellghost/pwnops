@@ -7,10 +7,10 @@ import { getThreatFeed } from '@/lib/store';
 
 export async function GET(request: Request) {
   const user = await getAuthUser(request);
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!user || !user.organizationId) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   // Auto-progress running scans based on elapsed time
-  const scans = await getScans();
+  const scans = await getScans(user.organizationId);
   const now = Date.now();
   for (const scan of scans) {
     if (scan.status === 'running' || scan.status === 'queued') {
@@ -47,12 +47,12 @@ export async function GET(request: Request) {
     }
   }
 
-  return Response.json({ scans, threatFeed: await getThreatFeed() });
+  return Response.json({ scans, threatFeed: await getThreatFeed(user.organizationId) });
 }
 
 export async function POST(request: Request) {
   const user = await getAuthUser(request);
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!user || !user.organizationId) return Response.json({ error: 'Unauthorized' }, { status: 401 });
   if (user.role === 'viewer') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
   const body = await request.json();
@@ -71,6 +71,7 @@ export async function POST(request: Request) {
     startedAt: new Date().toISOString(),
     completedAt: null,
     results: null,
+    organizationId: user.organizationId,
   });
 
   return Response.json({ scan }, { status: 201 });

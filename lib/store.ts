@@ -19,9 +19,9 @@ export const prisma = globalForPrisma.prisma || createPrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 // ── User CRUD ────────────────────────────────────────────
-export async function getUsers() { 
+export async function getUsers(organizationId: string) { 
   await seedIfEmpty();
-  const users = await prisma.user.findMany();
+  const users = await prisma.user.findMany({ where: { organizationId } });
   return users.map(u => ({ ...u, passwordHash: '' })); 
 }
 export async function getUserById(id: string) { return prisma.user.findUnique({ where: { id } }); }
@@ -42,9 +42,9 @@ export async function updateUserRole(id: string, role: string) {
 }
 
 // ── Incident CRUD ────────────────────────────────────────
-export async function getIncidents() { 
+export async function getIncidents(organizationId: string) { 
   await seedIfEmpty();
-  return prisma.incident.findMany({ orderBy: { createdAt: 'desc' } }); 
+  return prisma.incident.findMany({ where: { organizationId }, orderBy: { createdAt: 'desc' } }); 
 }
 export async function getIncidentById(id: string) { return prisma.incident.findUnique({ where: { id } }); }
 export async function addIncident(i: Omit<Incident, 'id' | 'numericId' | 'createdAt' | 'updatedAt'>) {
@@ -55,9 +55,9 @@ export async function updateIncidentStatus(id: string, status: string) {
 }
 
 // ── Vulnerability CRUD ───────────────────────────────────
-export async function getVulnerabilities() { 
+export async function getVulnerabilities(organizationId: string) { 
   await seedIfEmpty();
-  return prisma.vulnerability.findMany({ orderBy: { discoveredAt: 'desc' } }); 
+  return prisma.vulnerability.findMany({ where: { organizationId }, orderBy: { discoveredAt: 'desc' } }); 
 }
 export async function getVulnById(id: string) { return prisma.vulnerability.findUnique({ where: { id } }); }
 export async function updateVulnStatus(id: string, status: string) {
@@ -65,7 +65,7 @@ export async function updateVulnStatus(id: string, status: string) {
 }
 
 // ── Scan CRUD ────────────────────────────────────────────
-export async function getScans() { return prisma.scan.findMany({ orderBy: { startedAt: 'desc' } }); }
+export async function getScans(organizationId: string) { return prisma.scan.findMany({ where: { organizationId }, orderBy: { startedAt: 'desc' } }); }
 export async function addScan(s: Omit<Scan, 'id'>) {
   return prisma.scan.create({ data: s as any });
 }
@@ -74,7 +74,7 @@ export async function updateScan(id: string, update: Partial<Scan>) {
 }
 
 // ── Threat Feed ──────────────────────────────────────────
-export async function getThreatFeed() { return prisma.threatFeedEntry.findMany({ orderBy: { timestamp: 'desc' } }); }
+export async function getThreatFeed(organizationId: string) { return prisma.threatFeedEntry.findMany({ where: { organizationId }, orderBy: { timestamp: 'desc' } }); }
 
 // ── Seed Data ────────────────────────────────────────────
 let seeding = false;
@@ -86,36 +86,39 @@ export async function seedIfEmpty() {
   seeding = true;
   console.log('Seeding Supabase Database...');
 
+  const org = await prisma.organization.create({ data: { name: 'PwnOps Default SOC' } });
+  const orgId = org.id;
+
   const adminHash = bcrypt.hashSync('admin123', 12);
   const analystHash = bcrypt.hashSync('analyst123', 12);
 
-  const admin = await prisma.user.create({ data: { email: 'admin@pwnops.sec', name: 'Admin', passwordHash: adminHash, role: 'admin' }});
-  const analyst1 = await prisma.user.create({ data: { email: 'j.doe@pwnops.sec', name: 'J. Doe', passwordHash: analystHash, role: 'analyst' }});
-  const analyst2 = await prisma.user.create({ data: { email: 'm.smith@pwnops.sec', name: 'M. Smith', passwordHash: analystHash, role: 'analyst' }});
-  await prisma.user.create({ data: { email: 'viewer@pwnops.sec', name: 'A. Kumar', passwordHash: bcrypt.hashSync('viewer123', 12), role: 'viewer' }});
+  const admin = await prisma.user.create({ data: { email: 'admin@pwnops.sec', name: 'Admin', passwordHash: adminHash, role: 'admin', organizationId: orgId }});
+  const analyst1 = await prisma.user.create({ data: { email: 'j.doe@pwnops.sec', name: 'J. Doe', passwordHash: analystHash, role: 'analyst', organizationId: orgId }});
+  const analyst2 = await prisma.user.create({ data: { email: 'm.smith@pwnops.sec', name: 'M. Smith', passwordHash: analystHash, role: 'analyst', organizationId: orgId }});
+  await prisma.user.create({ data: { email: 'viewer@pwnops.sec', name: 'A. Kumar', passwordHash: bcrypt.hashSync('viewer123', 12), role: 'viewer', organizationId: orgId }});
 
   await prisma.incident.createMany({
     data: [
-      { title: 'Exfiltration attempt on DB-01', description: 'Detected unusual outbound data transfer from database server DB-01 to external IP.', severity: 'critical', status: 'new', assigneeId: analyst1.id, assigneeName: 'J. Doe', createdBy: admin.id, mitigationSteps: [] },
-      { title: 'Unauthorized login from unknown ASN', description: 'Multiple login attempts from an unrecognized autonomous system number detected.', severity: 'high', status: 'new', assigneeId: analyst2.id, assigneeName: 'M. Smith', createdBy: admin.id, mitigationSteps: [] },
-      { title: 'Suspicious activity on /auth endpoint', description: 'Rate-limited brute force attempts detected on the authentication endpoint.', severity: 'medium', status: 'new', createdBy: admin.id, mitigationSteps: [] },
-      { title: 'Outdated TLS certificate on staging', description: 'TLS certificate on staging-app-4 expires in 3 days.', severity: 'low', status: 'new', createdBy: admin.id, mitigationSteps: [] },
+      { title: 'Exfiltration attempt on DB-01', description: 'Detected unusual outbound data transfer from database server DB-01 to external IP.', severity: 'critical', status: 'new', assigneeId: analyst1.id, assigneeName: 'J. Doe', createdBy: admin.id, mitigationSteps: [], organizationId: orgId },
+      { title: 'Unauthorized login from unknown ASN', description: 'Multiple login attempts from an unrecognized autonomous system number detected.', severity: 'high', status: 'new', assigneeId: analyst2.id, assigneeName: 'M. Smith', createdBy: admin.id, mitigationSteps: [], organizationId: orgId },
+      { title: 'Suspicious activity on /auth endpoint', description: 'Rate-limited brute force attempts detected on the authentication endpoint.', severity: 'medium', status: 'new', createdBy: admin.id, mitigationSteps: [], organizationId: orgId },
+      { title: 'Outdated TLS certificate on staging', description: 'TLS certificate on staging-app-4 expires in 3 days.', severity: 'low', status: 'new', createdBy: admin.id, mitigationSteps: [], organizationId: orgId },
     ]
   });
 
   await prisma.vulnerability.createMany({
     data: [
-      { cveId: 'CVE-2024-4321', version: 'v2.1', title: 'Unauthenticated Remote Code Execution in Gateway', description: 'Buffer overflow in the SSL/TLS termination module allows unauthenticated remote code execution.', severity: 'critical', cvssScore: 9.8, affectedAsset: 'PROD-GW-01', status: 'open' },
-      { cveId: 'CVE-2023-9982', version: 'v1.4', title: 'SQL Injection in User Profile Endpoint', description: 'Insufficient sanitization of the sort parameter in the user profile API.', severity: 'high', cvssScore: 8.1, affectedAsset: 'USER-DB-CLUSTER', status: 'in_progress' },
-      { cveId: 'CVE-2024-1102', version: 'v3.0', title: 'Exposed Debug Information', description: 'Internal system paths leaking in HTTP error responses on staging environment.', severity: 'medium', cvssScore: 5.4, affectedAsset: 'STAGING-APP-4', status: 'fixed' },
+      { cveId: 'CVE-2024-4321', version: 'v2.1', title: 'Unauthenticated Remote Code Execution in Gateway', description: 'Buffer overflow in the SSL/TLS termination module allows unauthenticated remote code execution.', severity: 'critical', cvssScore: 9.8, affectedAsset: 'PROD-GW-01', status: 'open', organizationId: orgId },
+      { cveId: 'CVE-2023-9982', version: 'v1.4', title: 'SQL Injection in User Profile Endpoint', description: 'Insufficient sanitization of the sort parameter in the user profile API.', severity: 'high', cvssScore: 8.1, affectedAsset: 'USER-DB-CLUSTER', status: 'in_progress', organizationId: orgId },
+      { cveId: 'CVE-2024-1102', version: 'v3.0', title: 'Exposed Debug Information', description: 'Internal system paths leaking in HTTP error responses on staging environment.', severity: 'medium', cvssScore: 5.4, affectedAsset: 'STAGING-APP-4', status: 'fixed', organizationId: orgId },
     ]
   });
   
   await prisma.threatFeedEntry.createMany({
     data: [
-      { message: 'Brute force detected from 101.2.4.1' },
-      { message: 'SQLi attempt blocked on App-Server-02' },
-      { message: 'Lateral movement audit initiated' },
+      { message: 'Brute force detected from 101.2.4.1', organizationId: orgId },
+      { message: 'SQLi attempt blocked on App-Server-02', organizationId: orgId },
+      { message: 'Lateral movement audit initiated', organizationId: orgId },
     ]
   });
   

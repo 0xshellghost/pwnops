@@ -7,8 +7,8 @@ import type { Role } from '@/lib/types';
 
 export async function GET(request: Request) {
   const user = await getAuthUser(request);
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  return Response.json({ users: await getUsers() });
+  if (!user || !user.organizationId) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  return Response.json({ users: await getUsers(user.organizationId) });
 }
 
 export async function PATCH(request: Request) {
