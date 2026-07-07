@@ -177,7 +177,7 @@ function CreateModal({ onClose, onCreate }: {
         <form onSubmit={e => { e.preventDefault(); onCreate({ title, description: desc, severity: sev }); }} className="space-y-4">
           <div>
             <label className="label-mono block mb-1">Title</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Incident title" className="input-field !pl-4" required />
+            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Incident title" className="input-field pl-4!" required />
           </div>
           <div>
             <label className="label-mono block mb-1">Description</label>

@@ -84,8 +84,8 @@ export default function LoginPage() {
             <div className="mt-6">
               <p className="text-center label-mono mb-4">External Providers</p>
               <div className="grid grid-cols-2 gap-3">
-                <button className="btn-outline text-xs py-3">SSO Logon ⚙</button>
-                <button className="btn-outline text-xs py-3">GH Auth ⊡</button>
+                <button className="btn-outline text-xs py-3 opacity-50 cursor-not-allowed" title="Coming soon">SSO Logon ⚙</button>
+                <a href="/api/auth/github" className="btn-outline text-xs py-3 flex items-center justify-center gap-2 hover:bg-accent-cyan/10">GH Auth ⊡</a>
               </div>
             </div>
 

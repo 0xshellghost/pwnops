@@ -87,7 +87,7 @@ export default function ScansPage() {
             <label className="label-mono block mb-1">Target</label>
             <input value={target} onChange={e => setTarget(e.target.value)}
               placeholder="e.g. 10.0.0.0/24 or prod-gw-01"
-              className="input-field !pl-4 text-sm" />
+              className="input-field pl-4! text-sm" />
           </div>
           <button onClick={launchScan} disabled={!canLaunch || launching || !target.trim()}
             className="btn-primary w-full text-sm">
