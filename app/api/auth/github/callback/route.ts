@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findUserByEmail, addUser } from '@/lib/store';
-import { signToken } from '@/lib/auth';
+import { signToken, COOKIE_NAME } from '@/lib/auth';
 import { v4 as uuid } from 'uuid';
 
 export async function GET(request: NextRequest) {
@@ -78,14 +78,12 @@ export async function GET(request: NextRequest) {
     // 5. Issue JWT and set cookie
     const token = await signToken({
       userId: user.id,
-      email: user.email,
       role: user.role,
-      name: user.name,
     });
 
     const response = NextResponse.redirect(new URL('/dashboard', request.url));
     
-    response.cookies.set('token', token, {
+    response.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
