@@ -1,8 +1,26 @@
 import Link from 'next/link';
 
 export default function LandingPage() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "PwnOps",
+    "applicationCategory": "SecurityApplication",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "description": "Enterprise-grade automated defense for cloud-native environments. Detect, prioritize, and remediate critical vulnerabilities.",
+  };
+
   return (
-    <div className="min-h-screen bg-bg-primary">
+    <div className="min-h-screen bg-bg-primary flex flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* ─── Header ──────────────────────────────────── */}
       <header className="border-b border-border">
         <div className="max-w-6xl mx-auto w-full flex items-center justify-between px-5 py-4">
@@ -21,7 +39,8 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* ─── Hero ────────────────────────────────────── */}
+      <main className="flex-1">
+        {/* ─── Hero ────────────────────────────────────── */}
       <section className="hero-gradient">
         <div className="max-w-6xl mx-auto w-full px-5 pt-12 pb-8">
           <div className="flex items-center gap-2 mb-4">
@@ -158,6 +177,7 @@ export default function LandingPage() {
           Get Started Free →
         </Link>
       </section>
+      </main>
 
       {/* ─── Footer ──────────────────────────────────── */}
       <footer className="border-t border-border mt-8">
