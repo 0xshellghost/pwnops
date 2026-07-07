@@ -14,6 +14,9 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://pwnops.vercel.app"),
+  alternates: {
+    canonical: '/',
+  },
   title: {
     default: "PwnOps — Automated Vulnerability Management & Incident Response",
     template: "%s | PwnOps",

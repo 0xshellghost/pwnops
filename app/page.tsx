@@ -48,7 +48,7 @@ export default function LandingPage() {
             <span className="label-mono text-accent-green">System Active</span>
           </div>
           <h1 className="text-3xl font-bold leading-tight mb-2">
-            Automated Defense for{' '}
+            Automated Cybersecurity for{' '}
             <span className="text-accent-cyan">Cloud-Native Environments</span>
           </h1>
           <p className="text-text-secondary text-sm leading-relaxed mb-8">
