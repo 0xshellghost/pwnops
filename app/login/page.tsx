@@ -1,21 +1,113 @@
-import { NextPage } from 'next'
+'use client';
 
-interface Props {}
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
-const Page: NextPage<Props> = ({}) => {
-  return <div>
-    <h1>Login </h1>
-    <form action="/api/auth/login" method='POST'>
-        <input type="text" name='email' placeholder='Enter email'></input>
-        <br/>
-        <input type="password" name='password' placeholder='Enter Password'></input>
-        <br/>
-        <button type="submit">Submit</button>
-        <br/>
-        <p>Don't have an account? <a href="/register">Register</a></p>
-        
-    </form>
-  </div>
+export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (res.ok) router.push('/dashboard');
+      else setError(data.error || 'Login failed');
+    } catch { setError('Network error'); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div className="min-h-screen bg-bg-primary flex flex-col">
+      <header className="px-5 py-5 flex items-center gap-2">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-accent-cyan">
+          <path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill="currentColor" opacity="0.2" stroke="currentColor" strokeWidth="1.5"/>
+          <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <span className="text-accent-cyan font-bold text-2xl tracking-tight" style={{ fontFamily: 'var(--font-mono)' }}>PwnOps</span>
+      </header>
+
+      <main className="flex-1 flex items-start justify-center px-5 pt-8">
+        <div className="w-full max-w-md animate-fade-in">
+          <div className="card-glass p-6">
+            <h1 className="text-2xl font-bold mb-1">Initialize Session</h1>
+            <p className="text-text-secondary text-sm mb-6">Identify yourself to access the platform.</p>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="label-mono block mb-2">Identifier (Email)</label>
+                <div className="relative">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted">
+                    <circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 006 0v-1a10 10 0 10-3.92 7.94"/>
+                  </svg>
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="operator@pwnops.sec" className="input-field" required/>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="label-mono">Access Key (Password)</label>
+                  <span className="label-mono text-accent-cyan cursor-pointer">Recovery Flow</span>
+                </div>
+                <div className="relative">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted">
+                    <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+                  </svg>
+                  <input type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••••••" className="input-field pr-12" required/>
+                  <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {error && <div className="text-accent-red text-sm bg-accent-red/10 border border-accent-red/20 rounded-lg px-4 py-2">{error}</div>}
+
+              <button type="submit" disabled={loading} className="btn-primary w-full py-3">
+                {loading ? 'Authenticating...' : 'Authorize Access ⊘'}
+              </button>
+            </form>
+
+            <div className="mt-6">
+              <p className="text-center label-mono mb-4">External Providers</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button className="btn-outline text-xs py-3">SSO Logon ⚙</button>
+                <button className="btn-outline text-xs py-3">GH Auth ⊡</button>
+              </div>
+            </div>
+
+            <p className="text-center text-sm mt-6 text-text-secondary">
+              New deployment?{' '}
+              <Link href="/register" className="text-accent-cyan font-semibold hover:underline">Provision account</Link>
+            </p>
+          </div>
+
+          <div className="flex items-center justify-center gap-4 mt-8 text-text-muted text-xs" style={{ fontFamily: 'var(--font-mono)' }}>
+            <span>⊙ SOC2 Compliant</span>
+            <span>⊛ End-to-End SSL</span>
+          </div>
+        </div>
+      </main>
+
+      <footer className="px-5 py-6 text-center">
+        <p className="text-text-muted text-xs" style={{ fontFamily: 'var(--font-mono)' }}>© 2024 PWNOPS SEC OPS. ENCRYPTED CONNECTION.</p>
+        <div className="flex justify-center gap-6 mt-3 text-text-muted text-xs">
+          <span>Documentation</span><span>API Reference</span><span>Support</span><span>System Status</span>
+        </div>
+      </footer>
+    </div>
+  );
 }
-
-export default Page
