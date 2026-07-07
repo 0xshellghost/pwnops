@@ -6,13 +6,27 @@ datasource db {
   provider  = "postgresql"
 }
 
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  users           User[]
+  incidents       Incident[]
+  vulnerabilities Vulnerability[]
+  scans           Scan[]
+  threatFeeds     ThreatFeedEntry[]
+}
+
 model User {
-  id           String     @id @default(uuid())
-  email        String     @unique
-  name         String
-  passwordHash String
-  role         String     @default("analyst")
-  createdAt    DateTime   @default(now())
+  id             String        @id @default(uuid())
+  email          String        @unique
+  name           String
+  passwordHash   String
+  role           String        @default("analyst")
+  createdAt      DateTime      @default(now())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
   // Relationships
   incidents    Incident[] @relation("Assignee")
@@ -20,23 +34,25 @@ model User {
 }
 
 model Incident {
-  id              String   @id @default(uuid())
-  numericId       Int      @unique @default(autoincrement())
+  id              String        @id @default(uuid())
+  numericId       Int           @unique @default(autoincrement())
   title           String
   description     String
-  severity        String   @default("medium")
-  status          String   @default("new")
+  severity        String        @default("medium")
+  status          String        @default("new")
   assigneeId      String?
-  assignee        User?    @relation("Assignee", fields: [assigneeId], references: [id])
+  assignee        User?         @relation("Assignee", fields: [assigneeId], references: [id])
   assigneeName    String?
   createdBy       String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  mitigationSteps String[] // PostgreSQL supports string arrays natively
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  mitigationSteps String[]      // PostgreSQL supports string arrays natively
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
 }
 
 model Vulnerability {
-  id             String   @id @default(uuid())
+  id             String        @id @default(uuid())
   cveId          String
   version        String
   title          String
@@ -44,25 +60,31 @@ model Vulnerability {
   severity       String
   cvssScore      Float
   affectedAsset  String
-  status         String   @default("open")
-  discoveredAt   DateTime @default(now())
+  status         String        @default("open")
+  discoveredAt   DateTime      @default(now())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 }
 
 model Scan {
-  id            String    @id @default(uuid())
-  toolName      String
-  target        String
-  status        String    @default("queued")
-  progress      Int       @default(0)
-  triggeredById String?
-  triggeredBy   User?     @relation("TriggeredBy", fields: [triggeredById], references: [id])
-  startedAt     DateTime  @default(now())
-  completedAt   DateTime?
-  results       String?
+  id             String        @id @default(uuid())
+  toolName       String
+  target         String
+  status         String        @default("queued")
+  progress       Int           @default(0)
+  triggeredById  String?
+  triggeredBy    User?         @relation("TriggeredBy", fields: [triggeredById], references: [id])
+  startedAt      DateTime      @default(now())
+  completedAt    DateTime?
+  results        String?
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 }
 
 model ThreatFeedEntry {
-  id        String   @id @default(uuid())
-  message   String
-  timestamp DateTime @default(now())
+  id             String        @id @default(uuid())
+  message        String
+  timestamp      DateTime      @default(now())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 }
