@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       let changed = false;
       if (progress >= 100) {
         scan.status = 'completed';
-        scan.completedAt = new Date().toISOString();
+        scan.completedAt = new Date() as any;
         if (!scan.results) {
           scan.results = generateResults(scan.toolName, scan.target);
         }
@@ -39,9 +39,9 @@ export async function GET(request: Request) {
       if (changed) {
         await updateScan(scan.id, {
           progress: scan.progress,
-          status: scan.status,
+          status: scan.status as any,
           results: scan.results,
-          completedAt: scan.completedAt,
+          completedAt: scan.completedAt as any,
         });
       }
     }
