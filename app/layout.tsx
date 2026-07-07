@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s | PwnOps",
   },
   verification: {
-    google: 'FuE3SufSZlhSS47hxR2BoGtucMQocDdfcXGPx_tA4uk',
+    google: 'TuxOSZlf8kJKpDcL9RWoldMXCVK2mrqAS1ZkELO0ymE',
   },
   description:
     "Enterprise-grade automated defense for cloud-native environments. Detect, prioritize, and remediate critical vulnerabilities across your entire attack surface.",
