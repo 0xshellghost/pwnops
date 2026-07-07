@@ -77,6 +77,7 @@ export async function GET(request: NextRequest) {
     const token = await signToken({
       userId: user.id,
       role: user.role,
+      organizationId: user.organizationId,
     });
 
     const response = NextResponse.redirect(new URL('/dashboard', request.url));

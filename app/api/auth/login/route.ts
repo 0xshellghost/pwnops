@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    const token = await signToken({ userId: user.id, role: user.role });
+    const token = await signToken({ userId: user.id, role: user.role, organizationId: user.organizationId });
 
     const response = Response.json({
       user: { id: user.id, email: user.email, name: user.name, role: user.role },

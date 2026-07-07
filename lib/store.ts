@@ -29,7 +29,14 @@ export async function findUserByEmail(email: string) {
   await seedIfEmpty();
   return prisma.user.findUnique({ where: { email } }); 
 }
-export async function addUser(u: any) { return prisma.user.create({ data: u }); }
+export async function addUser(u: any) {
+  let orgId = u.organizationId;
+  if (!orgId) {
+    const org = await prisma.organization.create({ data: { name: `${u.name || 'User'}'s SOC Team` } });
+    orgId = org.id;
+  }
+  return prisma.user.create({ data: { ...u, organizationId: orgId } });
+}
 export async function updateUserRole(id: string, role: string) {
   return prisma.user.update({ where: { id }, data: { role } });
 }

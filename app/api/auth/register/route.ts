@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     };
 
     const newUser = await addUser(user);
-    const token = await signToken({ userId: newUser.id, role: newUser.role });
+    const token = await signToken({ userId: newUser.id, role: newUser.role, organizationId: newUser.organizationId });
 
     const response = Response.json({
       user: { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role },

@@ -11,7 +11,7 @@ const secret = new TextEncoder().encode(
 
 const COOKIE_NAME = 'pwnops_token';
 
-export async function signToken(payload: { userId: string; role: string }): Promise<string> {
+export async function signToken(payload: { userId: string; role: string; organizationId: string | null }): Promise<string> {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -22,7 +22,7 @@ export async function signToken(payload: { userId: string; role: string }): Prom
 export async function verifyToken(token: string) {
   try {
     const { payload } = await jwtVerify(token, secret);
-    return payload as { userId: string; role: string };
+    return payload as { userId: string; role: string; organizationId: string | null };
   } catch {
     return null;
   }
@@ -37,7 +37,7 @@ export async function getAuthUser(request: Request) {
   if (!decoded) return null;
   const user = await getUserById(decoded.userId);
   if (!user) return null;
-  return { id: user.id, email: user.email, name: user.name, role: user.role };
+  return { id: user.id, email: user.email, name: user.name, role: user.role, organizationId: user.organizationId };
 }
 
 /** Get token from request for middleware (Edge-compatible) */

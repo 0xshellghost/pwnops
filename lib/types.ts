@@ -15,6 +15,7 @@ export interface User {
   passwordHash: string;
   role: Role;
   createdAt: string;
+  organizationId: string | null;
 }
 
 export interface Incident {
@@ -30,6 +31,7 @@ export interface Incident {
   createdAt: string;
   updatedAt: string;
   mitigationSteps: string[];
+  organizationId: string | null;
 }
 
 export interface Vulnerability {
@@ -43,6 +45,7 @@ export interface Vulnerability {
   affectedAsset: string;
   status: VulnStatus;
   discoveredAt: string;
+  organizationId: string | null;
 }
 
 export interface Scan {
@@ -55,10 +58,12 @@ export interface Scan {
   startedAt: string;
   completedAt: string | null;
   results: string | null;
+  organizationId: string | null;
 }
 
 export interface ThreatFeedEntry {
   id: string;
   message: string;
   timestamp: string;
+  organizationId: string | null;
 }
