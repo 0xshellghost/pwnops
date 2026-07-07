@@ -27,6 +27,28 @@ export default function VulnerabilitiesPage() {
       .finally(() => setLoading(false));
   }, [search, severityFilter]);
 
+  const handleExport = () => {
+    if (vulns.length === 0) return;
+    const headers = ['CVE ID', 'Title', 'Severity', 'CVSS Score', 'Asset', 'Status'];
+    const rows = vulns.map(v => [
+      v.cveId,
+      `"${v.title.replace(/"/g, '""')}"`,
+      v.severity,
+      v.cvssScore,
+      `"${v.affectedAsset}"`,
+      v.status
+    ]);
+    const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `pwnops_vulnerability_report_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const totalPages = Math.ceil(vulns.length / PER_PAGE);
   const paginated = vulns.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
@@ -86,7 +108,7 @@ export default function VulnerabilitiesPage() {
           <option value="medium">Medium</option>
           <option value="low">Low</option>
         </select>
-        <button className="btn-outline text-xs">↓ Export Report</button>
+        <button onClick={handleExport} className="btn-outline text-xs">↓ Export Report</button>
       </div>
 
       {/* Stats Grid */}
