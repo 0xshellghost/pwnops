@@ -14,11 +14,11 @@ export async function GET(request: Request) {
   const status = url.searchParams.get('status');
   const search = url.searchParams.get('search')?.toLowerCase();
 
-  let vulns = getVulnerabilities();
+  let vulns = await getVulnerabilities();
 
-  if (severity && severity !== 'all') vulns = vulns.filter(v => v.severity === severity);
-  if (status && status !== 'all') vulns = vulns.filter(v => v.status === status);
-  if (search) vulns = vulns.filter(v =>
+  if (severity && severity !== 'all') vulns = vulns.filter((v: any) => v.severity === severity);
+  if (status && status !== 'all') vulns = vulns.filter((v: any) => v.status === status);
+  if (search) vulns = vulns.filter((v: any) =>
     v.cveId.toLowerCase().includes(search) ||
     v.title.toLowerCase().includes(search) ||
     v.affectedAsset.toLowerCase().includes(search)
@@ -35,7 +35,7 @@ export async function PATCH(request: Request) {
   const body = await request.json();
   const { id, status } = body;
 
-  const vuln = updateVulnStatus(id, status as VulnStatus);
+  const vuln = await updateVulnStatus(id, status as VulnStatus);
   if (!vuln) return Response.json({ error: 'Vulnerability not found' }, { status: 404 });
 
   return Response.json({ vulnerability: vuln });

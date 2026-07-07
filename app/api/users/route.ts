@@ -8,7 +8,7 @@ import type { Role } from '@/lib/types';
 export async function GET(request: Request) {
   const user = await getAuthUser(request);
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  return Response.json({ users: getUsers() });
+  return Response.json({ users: await getUsers() });
 }
 
 export async function PATCH(request: Request) {
@@ -23,7 +23,7 @@ export async function PATCH(request: Request) {
     return Response.json({ error: 'id and role are required' }, { status: 400 });
   }
 
-  const updated = updateUserRole(id, role as Role);
+  const updated = await updateUserRole(id, role as Role);
   if (!updated) return Response.json({ error: 'User not found' }, { status: 404 });
 
   return Response.json({ user: { id: updated.id, email: updated.email, name: updated.name, role: updated.role } });

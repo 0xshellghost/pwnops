@@ -15,25 +15,23 @@ export async function POST(request: Request) {
       return Response.json({ error: 'All fields are required' }, { status: 400 });
     }
 
-    if (findUserByEmail(email)) {
+    if (await findUserByEmail(email)) {
       return Response.json({ error: 'User already exists' }, { status: 409 });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
     const user = {
-      id: uuid(),
       email,
       name,
       passwordHash,
       role: 'analyst' as const,
-      createdAt: new Date().toISOString(),
     };
 
-    addUser(user);
-    const token = await signToken({ userId: user.id, role: user.role });
+    const newUser = await addUser(user);
+    const token = await signToken({ userId: newUser.id, role: newUser.role });
 
     const response = Response.json({
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      user: { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role },
     });
 
     // Set cookie

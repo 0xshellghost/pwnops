@@ -35,7 +35,7 @@ export async function getAuthUser(request: Request) {
   if (!match) return null;
   const decoded = await verifyToken(match[1]);
   if (!decoded) return null;
-  const user = getUserById(decoded.userId);
+  const user = await getUserById(decoded.userId);
   if (!user) return null;
   return { id: user.id, email: user.email, name: user.name, role: user.role };
 }
