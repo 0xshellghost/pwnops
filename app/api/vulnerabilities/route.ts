@@ -35,7 +35,7 @@ export async function PATCH(request: Request) {
   const body = await request.json();
   const { id, status } = body;
 
-  const vuln = await updateVulnStatus(id, status as VulnStatus);
+  const vuln = await updateVulnStatus(id, status as VulnStatus, user.organizationId!);
   if (!vuln) return Response.json({ error: 'Vulnerability not found' }, { status: 404 });
 
   return Response.json({ vulnerability: vuln });

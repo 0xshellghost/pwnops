@@ -28,7 +28,7 @@ export async function PATCH(request: Request) {
     return Response.json({ error: 'id and role are required' }, { status: 400 });
   }
 
-  const updated = await updateUserRole(id, role as Role);
+  const updated = await updateUserRole(id, role as Role, user.organizationId!);
   if (!updated) return Response.json({ error: 'User not found' }, { status: 404 });
 
   return Response.json({ user: { id: updated.id, email: updated.email, name: updated.name, role: updated.role } });

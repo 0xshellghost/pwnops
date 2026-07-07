@@ -39,7 +39,9 @@ export async function addUser(u: any) {
   }
   return prisma.user.create({ data: { ...u, organizationId: orgId } });
 }
-export async function updateUserRole(id: string, role: string) {
+export async function updateUserRole(id: string, role: string, organizationId: string) {
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user || user.organizationId !== organizationId) return null;
   return prisma.user.update({ where: { id }, data: { role } });
 }
 
@@ -52,7 +54,9 @@ export async function getIncidentById(id: string) { return prisma.incident.findU
 export async function addIncident(i: Omit<Incident, 'id' | 'numericId' | 'createdAt' | 'updatedAt'>) {
   return prisma.incident.create({ data: i as any });
 }
-export async function updateIncidentStatus(id: string, status: string) {
+export async function updateIncidentStatus(id: string, status: string, organizationId: string) {
+  const incident = await prisma.incident.findUnique({ where: { id } });
+  if (!incident || incident.organizationId !== organizationId) return null;
   return prisma.incident.update({ where: { id }, data: { status } });
 }
 
@@ -62,7 +66,9 @@ export async function getVulnerabilities(organizationId: string) {
   return prisma.vulnerability.findMany({ where: { organizationId }, orderBy: { discoveredAt: 'desc' } }); 
 }
 export async function getVulnById(id: string) { return prisma.vulnerability.findUnique({ where: { id } }); }
-export async function updateVulnStatus(id: string, status: string) {
+export async function updateVulnStatus(id: string, status: string, organizationId: string) {
+  const vuln = await prisma.vulnerability.findUnique({ where: { id } });
+  if (!vuln || vuln.organizationId !== organizationId) return null;
   return prisma.vulnerability.update({ where: { id }, data: { status } });
 }
 

@@ -50,7 +50,7 @@ export async function PATCH(request: Request) {
     return Response.json({ error: 'id and status are required' }, { status: 400 });
   }
 
-  const incident = await updateIncidentStatus(id, status as IncidentStatus);
+  const incident = await updateIncidentStatus(id, status as IncidentStatus, user.organizationId!);
   if (!incident) return Response.json({ error: 'Incident not found' }, { status: 404 });
 
   return Response.json({ incident });
