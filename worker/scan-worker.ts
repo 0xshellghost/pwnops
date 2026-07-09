@@ -13,6 +13,7 @@ import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { executeScan, getAvailableTools, validateTarget, validateToolName } from '../lib/scan-engine';
+import { createServer } from 'http';
 
 // ── Configuration ────────────────────────────────────────
 const POLL_INTERVAL_MS = Number(process.env.WORKER_POLL_INTERVAL) || 3000;
@@ -218,6 +219,16 @@ function printBanner() {
 }
 
 async function start() {
+  // ── Render Free Tier Hack ──
+  // Start a dummy HTTP server so Render thinks this is a healthy "Web Service"
+  const port = process.env.PORT || 10000;
+  createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('PwnOps Scan Worker is healthy!\n');
+  }).listen(port, () => {
+    console.log(`\n  [Network] Dummy HTTP health-check server running on port ${port}`);
+  });
+
   printBanner();
 
   // Verify database connection
