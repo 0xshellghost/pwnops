@@ -129,6 +129,7 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
     buildArgs: (target, outputFile) => [
       '-sV',            // Service version detection
       '-T4',            // Aggressive timing (faster)
+      '-Pn',            // Skip host discovery (treat as online)
       '--open',         // Only show open ports
       '-oX', outputFile, // XML output for structured parsing
       '--max-retries', '2',
