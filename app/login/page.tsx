@@ -111,7 +111,7 @@ export default function LoginPage() {
       </main>
 
       <footer className="px-5 py-6 text-center">
-        <p className="text-text-muted text-xs" style={{ fontFamily: 'var(--font-mono)' }}>© 2024 PWNOPS SEC OPS. ENCRYPTED CONNECTION.</p>
+        <p className="text-text-muted text-xs" style={{ fontFamily: 'var(--font-mono)' }}>© {new Date().getFullYear()} PWNOPS SEC OPS. ENCRYPTED CONNECTION.</p>
         <div className="flex justify-center gap-6 mt-3 text-text-muted text-xs">
           <span>Documentation</span><span>API Reference</span><span>Support</span><span>System Status</span>
         </div>

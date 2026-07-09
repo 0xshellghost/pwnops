@@ -175,7 +175,7 @@ export default function DashboardHome() {
               <div className="donut w-40 h-40" style={{ background: donutGradient }}>
                 <div className="donut-inner w-32 h-32">
                   <span className="text-4xl font-bold">{String(activeIncidents).padStart(2, '0')}</span>
-                  <span className="label-mono text-accent-red mt-1">Critical</span>
+                  <span className="label-mono text-accent-red mt-1">Active</span>
                 </div>
               </div>
             </div>
@@ -214,7 +214,7 @@ export default function DashboardHome() {
       {/* Footer */}
       <footer className="text-center mt-10 pt-6 border-t border-border/50">
         <p className="text-text-muted text-xs tracking-wider" style={{ fontFamily: 'var(--font-mono)' }}>
-          © 2024 PWNOPS SEC OPS. ENCRYPTED CONNECTION.
+          © {new Date().getFullYear()} PWNOPS SEC OPS. ENCRYPTED CONNECTION.
         </p>
         <div className="flex justify-center gap-6 mt-4 text-text-muted text-xs">
           <span className="hover:text-text-secondary cursor-pointer transition-colors">Documentation</span>

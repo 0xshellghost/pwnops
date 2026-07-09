@@ -2,8 +2,10 @@
 // PwnOps — Incidents API
 // ──────────────────────────────────────────────────────────
 import { getAuthUser } from '@/lib/auth';
-import { getIncidents, addIncident, updateIncidentStatus, getIncidentById } from '@/lib/store';
-import type { IncidentStatus } from '@/lib/types';
+import { getIncidents, addIncident, updateIncidentStatus } from '@/lib/store';
+
+const VALID_SEVERITIES = ['critical', 'high', 'medium', 'low'] as const;
+const VALID_STATUSES = ['new', 'investigating', 'containing', 'resolved'] as const;
 
 export async function GET(request: Request) {
   const user = await getAuthUser(request);
@@ -21,6 +23,10 @@ export async function POST(request: Request) {
 
   if (!title || !severity) {
     return Response.json({ error: 'Title and severity are required' }, { status: 400 });
+  }
+
+  if (!VALID_SEVERITIES.includes(severity)) {
+    return Response.json({ error: `Invalid severity. Must be one of: ${VALID_SEVERITIES.join(', ')}` }, { status: 400 });
   }
 
   const incident = await addIncident({
@@ -50,7 +56,11 @@ export async function PATCH(request: Request) {
     return Response.json({ error: 'id and status are required' }, { status: 400 });
   }
 
-  const incident = await updateIncidentStatus(id, status as IncidentStatus, user.organizationId!);
+  if (!VALID_STATUSES.includes(status)) {
+    return Response.json({ error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}` }, { status: 400 });
+  }
+
+  const incident = await updateIncidentStatus(id, status, user.organizationId!);
   if (!incident) return Response.json({ error: 'Incident not found' }, { status: 404 });
 
   return Response.json({ incident });

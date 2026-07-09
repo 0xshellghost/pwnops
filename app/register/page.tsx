@@ -71,7 +71,7 @@ export default function RegisterPage() {
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted">
                     <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
                   </svg>
-                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 6 characters" className="input-field" required minLength={6}/>
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 8 characters" className="input-field" required minLength={8}/>
                 </div>
               </div>
 

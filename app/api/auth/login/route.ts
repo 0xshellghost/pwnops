@@ -3,7 +3,7 @@
 // ──────────────────────────────────────────────────────────
 import bcrypt from 'bcryptjs';
 import { findUserByEmail } from '@/lib/store';
-import { signToken, COOKIE_NAME } from '@/lib/auth';
+import { signToken, buildCookieHeader } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
@@ -14,9 +14,18 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return Response.json({ error: 'Invalid input types' }, { status: 400 });
+    }
+
     const user = await findUserByEmail(email);
     if (!user) {
       return Response.json({ error: 'Invalid credentials' }, { status: 401 });
+    }
+
+    // Reject OAuth-only users from password login
+    if (!user.passwordHash || user.passwordHash === '!OAUTH_NO_PASSWORD!') {
+      return Response.json({ error: 'This account uses external authentication (OAuth). Please sign in via Google or GitHub.' }, { status: 401 });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.passwordHash);
@@ -30,10 +39,7 @@ export async function POST(request: Request) {
       user: { id: user.id, email: user.email, name: user.name, role: user.role },
     });
 
-    response.headers.set(
-      'Set-Cookie',
-      `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24}`
-    );
+    response.headers.set('Set-Cookie', buildCookieHeader(token));
 
     return response;
   } catch {

@@ -3,7 +3,8 @@
 // ──────────────────────────────────────────────────────────
 import { getAuthUser } from '@/lib/auth';
 import { getVulnerabilities, updateVulnStatus } from '@/lib/store';
-import type { VulnStatus } from '@/lib/types';
+
+const VALID_VULN_STATUSES = ['open', 'in_progress', 'fixed'] as const;
 
 export async function GET(request: Request) {
   const user = await getAuthUser(request);
@@ -35,7 +36,15 @@ export async function PATCH(request: Request) {
   const body = await request.json();
   const { id, status } = body;
 
-  const vuln = await updateVulnStatus(id, status as VulnStatus, user.organizationId!);
+  if (!id || !status) {
+    return Response.json({ error: 'id and status are required' }, { status: 400 });
+  }
+
+  if (!VALID_VULN_STATUSES.includes(status)) {
+    return Response.json({ error: `Invalid status. Must be one of: ${VALID_VULN_STATUSES.join(', ')}` }, { status: 400 });
+  }
+
+  const vuln = await updateVulnStatus(id, status, user.organizationId!);
   if (!vuln) return Response.json({ error: 'Vulnerability not found' }, { status: 404 });
 
   return Response.json({ vulnerability: vuln });

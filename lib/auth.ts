@@ -2,26 +2,62 @@
 // PwnOps — JWT Auth Helpers
 // ──────────────────────────────────────────────────────────
 import { SignJWT, jwtVerify } from 'jose';
-import { cookies } from 'next/headers';
 import { getUserById } from './store';
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'pwnops-jwt-secret-change-in-production-2024'
-);
+// ── Centralized JWT Secret ──────────────────────────────
+// CRITICAL: No fallback — crash loudly if JWT_SECRET is missing.
+// This is the single source of truth; proxy.ts imports from here.
+if (!process.env.JWT_SECRET) {
+  throw new Error(
+    'FATAL: JWT_SECRET environment variable is not set. ' +
+    'Generate one with: openssl rand -base64 32'
+  );
+}
+
+export const jwtSecret = new TextEncoder().encode(process.env.JWT_SECRET);
 
 const COOKIE_NAME = 'pwnops_token';
+
+/** Whether cookies should be marked Secure (true in production) */
+export const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+/** Build a Set-Cookie header string with proper security attributes */
+export function buildCookieHeader(token: string, maxAge: number = 60 * 60 * 24): string {
+  const parts = [
+    `${COOKIE_NAME}=${token}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    `Max-Age=${maxAge}`,
+  ];
+  if (IS_PRODUCTION) parts.push('Secure');
+  return parts.join('; ');
+}
+
+/** Build a cookie-clearing header */
+export function buildClearCookieHeader(): string {
+  const parts = [
+    `${COOKIE_NAME}=`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    'Max-Age=0',
+  ];
+  if (IS_PRODUCTION) parts.push('Secure');
+  return parts.join('; ');
+}
 
 export async function signToken(payload: { userId: string; role: string; organizationId: string | null }): Promise<string> {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('24h')
-    .sign(secret);
+    .sign(jwtSecret);
 }
 
 export async function verifyToken(token: string) {
   try {
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, jwtSecret);
     return payload as { userId: string; role: string; organizationId: string | null };
   } catch {
     return null;

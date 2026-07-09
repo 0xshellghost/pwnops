@@ -2,8 +2,7 @@
 // PwnOps — Scans API
 // ──────────────────────────────────────────────────────────
 import { getAuthUser } from '@/lib/auth';
-import { getScans, addScan, updateScan } from '@/lib/store';
-import { getThreatFeed } from '@/lib/store';
+import { getScans, addScan, updateScan, getThreatFeed } from '@/lib/store';
 
 export async function GET(request: Request) {
   const user = await getAuthUser(request);
@@ -67,7 +66,7 @@ export async function POST(request: Request) {
     target,
     status: 'queued',
     progress: 0,
-    triggeredBy: user.id,
+    triggeredById: user.id,
     startedAt: new Date().toISOString(),
     completedAt: null,
     results: null,

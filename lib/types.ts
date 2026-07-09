@@ -54,7 +54,7 @@ export interface Scan {
   target: string;
   status: ScanStatus;
   progress: number;
-  triggeredBy: string;
+  triggeredById: string;
   startedAt: string;
   completedAt: string | null;
   results: string | null;

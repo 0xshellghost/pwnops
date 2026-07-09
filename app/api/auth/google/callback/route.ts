@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findUserByEmail, addUser } from '@/lib/store';
 import { signToken, COOKIE_NAME } from '@/lib/auth';
-import { v4 as uuid } from 'uuid';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get('code');
+  const state = searchParams.get('state');
 
   if (!code) {
     return NextResponse.redirect(new URL('/login?error=no_code', request.url));
+  }
+
+  // Validate CSRF state parameter
+  const storedState = request.cookies.get('oauth_state')?.value;
+  if (!state || !storedState || state !== storedState) {
+    return NextResponse.redirect(new URL('/login?error=invalid_state', request.url));
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -62,8 +68,8 @@ export async function GET(request: NextRequest) {
       const newUserObj = {
         name: googleUser.name || 'Google User',
         email: primaryEmail,
-        passwordHash: '', // OAuth users don't use a password hash
-        role: 'analyst', // Default role for new users
+        passwordHash: '!OAUTH_NO_PASSWORD!', // Sentinel — blocks password login
+        role: 'analyst',
       };
       user = await addUser(newUserObj);
     }
@@ -76,6 +82,9 @@ export async function GET(request: NextRequest) {
     });
 
     const response = NextResponse.redirect(new URL('/dashboard', request.url));
+    
+    // Clear the OAuth state cookie
+    response.cookies.delete('oauth_state');
     
     response.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,

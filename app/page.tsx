@@ -198,7 +198,7 @@ export default function LandingPage() {
             </span>
           </div>
           <p className="text-center text-text-muted text-xs mb-4" style={{ fontFamily: 'var(--font-mono)' }}>
-            © 2024 PWNOPS SEC OPS. ENCRYPTED CONNECTION.
+            © {new Date().getFullYear()} PWNOPS SEC OPS. ENCRYPTED CONNECTION.
           </p>
           <div className="flex justify-center gap-6 text-text-muted text-xs">
             <span className="hover:text-text-secondary cursor-pointer">Documentation</span>

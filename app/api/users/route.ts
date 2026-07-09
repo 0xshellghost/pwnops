@@ -3,8 +3,9 @@
 // ──────────────────────────────────────────────────────────
 import { getAuthUser } from '@/lib/auth';
 import { getUsers, updateUserRole, addUser, findUserByEmail, getOrganizationById } from '@/lib/store';
-import type { Role } from '@/lib/types';
 import bcrypt from 'bcryptjs';
+
+const VALID_ROLES = ['admin', 'analyst', 'viewer'] as const;
 
 export async function GET(request: Request) {
   const user = await getAuthUser(request);
@@ -28,7 +29,11 @@ export async function PATCH(request: Request) {
     return Response.json({ error: 'id and role are required' }, { status: 400 });
   }
 
-  const updated = await updateUserRole(id, role as Role, user.organizationId!);
+  if (!VALID_ROLES.includes(role)) {
+    return Response.json({ error: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` }, { status: 400 });
+  }
+
+  const updated = await updateUserRole(id, role, user.organizationId!);
   if (!updated) return Response.json({ error: 'User not found' }, { status: 404 });
 
   return Response.json({ user: { id: updated.id, email: updated.email, name: updated.name, role: updated.role } });
@@ -46,6 +51,10 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Email, name, and password are required' }, { status: 400 });
   }
 
+  if (role && !VALID_ROLES.includes(role)) {
+    return Response.json({ error: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` }, { status: 400 });
+  }
+
   const existing = await findUserByEmail(email);
   if (existing) {
     return Response.json({ error: 'User already exists in the system' }, { status: 409 });
@@ -56,10 +65,9 @@ export async function POST(request: Request) {
     email,
     name,
     passwordHash,
-    role: (role as Role) || 'viewer',
+    role: role || 'viewer',
     organizationId: user.organizationId,
   });
 
   return Response.json({ user: { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role } }, { status: 201 });
 }
-

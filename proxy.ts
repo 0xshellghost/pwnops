@@ -5,13 +5,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'pwnops-jwt-secret-change-in-production-2024'
-);
-
-const COOKIE_NAME = 'pwnops_token';
+// Import the centralized secret — single source of truth
+import { jwtSecret, COOKIE_NAME } from '@/lib/auth';
 
 // ── Rate Limiting (in-memory, per-IP) ───────────────────
+// NOTE: In-memory rate limiting is per-instance only.
+// For true production rate limiting on serverless, use Redis/Upstash.
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_WINDOW = 60_000; // 1 minute
 const RATE_LIMIT_AUTH = 10;       // 10 auth attempts per window
@@ -52,6 +51,11 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('X-XSS-Protection', '1; mode=block');
   // Referrer policy
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // Content Security Policy
+  response.headers.set(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none';"
+  );
   // Strict Transport Security (only in production)
   if (process.env.NODE_ENV === 'production') {
     response.headers.set(
@@ -106,7 +110,7 @@ export async function proxy(request: NextRequest) {
       );
     }
     try {
-      await jwtVerify(token, secret);
+      await jwtVerify(token, jwtSecret);
       const response = NextResponse.next();
       return addSecurityHeaders(response);
     } catch {

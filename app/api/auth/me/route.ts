@@ -1,7 +1,7 @@
 // ──────────────────────────────────────────────────────────
 // PwnOps — Current User API
 // ──────────────────────────────────────────────────────────
-import { getAuthUser, COOKIE_NAME } from '@/lib/auth';
+import { getAuthUser, buildClearCookieHeader } from '@/lib/auth';
 
 export async function GET(request: Request) {
   const user = await getAuthUser(request);
@@ -14,9 +14,6 @@ export async function GET(request: Request) {
 /** Logout — clear the cookie */
 export async function DELETE() {
   const response = Response.json({ ok: true });
-  response.headers.set(
-    'Set-Cookie',
-    `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`
-  );
+  response.headers.set('Set-Cookie', buildClearCookieHeader());
   return response;
 }
