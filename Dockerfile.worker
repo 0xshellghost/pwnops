@@ -12,10 +12,10 @@ RUN apt-get update && \
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy package manifests and install Node.js dependencies
+# Copy package manifests and Prisma schema (required for postinstall generation)
 COPY package.json package-lock.json ./
+COPY prisma ./prisma/
 RUN npm install
-
 # Copy the entire project codebase into the container
 # (In a real production setup, you might only copy the necessary lib/ and worker/ files)
 COPY . .
