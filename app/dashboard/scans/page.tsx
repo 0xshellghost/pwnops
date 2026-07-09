@@ -212,14 +212,12 @@ export default function ScansPage() {
                 setError('');
                 setLaunching(true);
                 const workflowTools = ['subfinder', 'whatweb', 'nmap', 'nuclei'];
-                const available = workflowTools.filter(t => tools.find(a => a.name === t)?.available);
-                if (available.length === 0) {
-                  setError('No workflow tools available.');
-                  setLaunching(false);
-                  return;
-                }
+                // We shouldn't filter by `available` here because we want to enqueue the jobs
+                // into the database regardless. If the worker doesn't have the tool, the worker
+                // will fail the job. But if the worker DOES have it, it will pick it up.
+                // We will only check if the API is reachable.
                 try {
-                  await Promise.all(available.map(t => fetch('/api/scans', {
+                  await Promise.all(workflowTools.map(t => fetch('/api/scans', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ toolName: t, target: target.trim() }),
