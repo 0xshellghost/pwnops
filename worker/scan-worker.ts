@@ -19,6 +19,7 @@ import { createServer } from 'http';
 const POLL_INTERVAL_MS = Number(process.env.WORKER_POLL_INTERVAL) || 3000;
 const MAX_CONCURRENT_SCANS = Number(process.env.WORKER_MAX_CONCURRENT) || 3;
 const WORKER_ID = `worker-${process.pid}-${Date.now().toString(36)}`;
+const WEBHOOK_URL = process.env.WEBHOOK_URL || process.env.DISCORD_WEBHOOK_URL || process.env.SLACK_WEBHOOK_URL;
 
 // ── Database Connection ──────────────────────────────────
 if (!process.env.DATABASE_URL) {
@@ -144,16 +145,36 @@ async function processScan(scan: {
     // Stop the progress simulation
     clearInterval(progressInterval);
 
+    // Fetch the previous successful scan for diffing
+    const prevScan = await prisma.scan.findFirst({
+      where: {
+        target,
+        toolName,
+        status: 'completed',
+        id: { not: id },
+      },
+      orderBy: { completedAt: 'desc' },
+    });
+
+    const diffAlert = (prevScan && result.success) 
+      ? generateDiff(prevScan.results || '', result.output) 
+      : null;
+
     // Update with final results
     await prisma.scan.update({
       where: { id },
       data: {
         status: result.success ? 'completed' : 'failed',
         progress: 100,
-        results: formatFinalOutput(result, toolName, target),
+        results: formatFinalOutput(result, toolName, target, diffAlert),
         completedAt: new Date(),
       },
     });
+
+    // Fire off enterprise webhook alert
+    if (result.success) {
+      await sendWebhookAlert(toolName, target, diffAlert).catch(() => {});
+    }
 
     totalProcessed++;
     console.log(
@@ -183,6 +204,7 @@ function formatFinalOutput(
   result: Awaited<ReturnType<typeof executeScan>>,
   toolName: string,
   target: string,
+  diffAlert: string | null = null,
 ): string {
   const header = [
     `╔══════════════════════════════════════════╗`,
@@ -200,7 +222,60 @@ function formatFinalOutput(
     ``,
   ].filter(Boolean).join('\n');
 
-  return header + result.output;
+  return header + (diffAlert ? diffAlert + '\n' : '') + result.output;
+}
+
+// Naive line-by-line diffing to find new findings
+function generateDiff(oldOut: string, newOut: string): string | null {
+  const ignorePhrases = ['duration', 'version', 'completed', 'started', 'time', 'elapsed', 'pwnops scan report', 'tool:', 'target:', 'status:', 'exit code:'];
+  
+  const cleanLine = (l: string) => l.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '').trim();
+  const isNoise = (l: string) => l.length < 5 || ignorePhrases.some(p => l.toLowerCase().includes(p)) || l.startsWith('─') || l.startsWith('═') || l.startsWith('╔') || l.startsWith('╚');
+
+  const oldLines = new Set(oldOut.split('\n').map(cleanLine).filter(l => !isNoise(l)));
+  const newLines = newOut.split('\n').map(cleanLine).filter(l => !isNoise(l));
+
+  const added = newLines.filter(l => !oldLines.has(l));
+  
+  if (added.length === 0) return null;
+
+  return [
+    `🚨 [ALERT] NEW FINDINGS DETECTED SINCE LAST SCAN 🚨`,
+    `───────────────────────────────────────────────────`,
+    ...added.slice(0, 15).map(l => `  [+] ${l}`),
+    added.length > 15 ? `  ... and ${added.length - 15} more new lines.` : '',
+    `───────────────────────────────────────────────────`,
+    ``
+  ].filter(Boolean).join('\n');
+}
+
+// Enterprise Webhook Alerting (Slack/Discord)
+async function sendWebhookAlert(toolName: string, target: string, diffAlert: string | null) {
+  if (!WEBHOOK_URL) return;
+  
+  try {
+    const title = diffAlert 
+      ? `🚨 **[NEW FINDINGS]** ${toolName} scan on \`${target}\``
+      : `✅ **[COMPLETED]** ${toolName} scan on \`${target}\``;
+      
+    // Discord / Slack compatible payload format
+    const payload = {
+      content: title,
+      embeds: diffAlert ? [{
+        title: 'Changes Detected Since Last Scan',
+        description: '```diff\n' + diffAlert.split('\n').filter(l => l.includes('[+]')).slice(0, 10).join('\n') + '\n```',
+        color: 16711680 // Red alert color
+      }] : undefined
+    };
+
+    await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.error(`[${WORKER_ID}] Webhook failed:`, err);
+  }
 }
 
 // ── Lifecycle ────────────────────────────────────────────
