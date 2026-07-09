@@ -33,8 +33,23 @@ export default function IncidentsPage() {
 
   useEffect(() => { fetchIncidents(); }, [fetchIncidents]);
   useEffect(() => {
-    const iv = setInterval(fetchIncidents, 5000);
-    return () => clearInterval(iv);
+    let iv: ReturnType<typeof setInterval> | null = null;
+
+    const startPolling = () => {
+      if (!iv) iv = setInterval(fetchIncidents, 5000);
+    };
+    const stopPolling = () => {
+      if (iv) { clearInterval(iv); iv = null; }
+    };
+
+    const handleVisibility = () => {
+      if (document.hidden) stopPolling();
+      else { fetchIncidents(); startPolling(); }
+    };
+
+    startPolling();
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => { stopPolling(); document.removeEventListener('visibilitychange', handleVisibility); };
   }, [fetchIncidents]);
 
   const moveIncident = async (id: string, status: string) => {

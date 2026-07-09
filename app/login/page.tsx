@@ -1,30 +1,43 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '@/components/AuthProvider';
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const searchParams = useSearchParams();
+
+  // Display OAuth callback errors
+  useEffect(() => {
+    const oauthError = searchParams.get('error');
+    if (oauthError) {
+      const messages: Record<string, string> = {
+        oauth_failed: 'Authentication with external provider failed. Please try again.',
+        no_code: 'Authorization code was missing. Please try again.',
+        no_email: 'Could not retrieve email from your provider.',
+        unconfigured: 'External authentication is not configured.',
+        invalid_state: 'Session expired or invalid. Please try again.',
+      };
+      setError(messages[oauthError] || 'Login failed. Please try again.');
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
+      const res = await login(email, password);
       if (res.ok) router.push('/dashboard');
-      else setError(data.error || 'Login failed');
+      else setError(res.error || 'Login failed');
     } catch { setError('Network error'); }
     finally { setLoading(false); }
   };
@@ -59,7 +72,7 @@ export default function LoginPage() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="label-mono">Access Key (Password)</label>
-                  <span className="label-mono text-accent-cyan cursor-pointer">Recovery Flow</span>
+                  <span className="label-mono text-text-muted">Recovery N/A</span>
                 </div>
                 <div className="relative">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted">
@@ -104,7 +117,7 @@ export default function LoginPage() {
           </div>
 
           <div className="flex items-center justify-center gap-4 mt-8 text-text-muted text-xs" style={{ fontFamily: 'var(--font-mono)' }}>
-            <span>⊙ SOC2 Compliant</span>
+            <span>⊙ Security First</span>
             <span>⊛ End-to-End SSL</span>
           </div>
         </div>
@@ -117,5 +130,13 @@ export default function LoginPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-bg-primary flex items-center justify-center text-text-muted">Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

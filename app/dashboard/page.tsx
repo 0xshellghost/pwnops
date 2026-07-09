@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface DashData {
   incidents: { severity: string; status: string }[];
@@ -10,16 +10,19 @@ interface DashData {
 
 function AnimatedNumber({ target, suffix = '' }: { target: number; suffix?: string }) {
   const [val, setVal] = useState(0);
+  const prevTarget = useRef(0);
   useEffect(() => {
+    const from = prevTarget.current;
     let start = 0;
     const duration = 1200;
     const step = (ts: number) => {
       if (!start) start = ts;
       const p = Math.min((ts - start) / duration, 1);
-      setVal(Math.round(p * target));
+      setVal(Math.round(from + (target - from) * p));
       if (p < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
+    prevTarget.current = target;
   }, [target]);
   return <>{val}{suffix}</>;
 }
@@ -217,10 +220,10 @@ export default function DashboardHome() {
           © {new Date().getFullYear()} PWNOPS SEC OPS. ENCRYPTED CONNECTION.
         </p>
         <div className="flex justify-center gap-6 mt-4 text-text-muted text-xs">
-          <span className="hover:text-text-secondary cursor-pointer transition-colors">Documentation</span>
-          <span className="hover:text-text-secondary cursor-pointer transition-colors">API Reference</span>
-          <span className="hover:text-text-secondary cursor-pointer transition-colors">Support</span>
-          <span className="text-accent-cyan underline cursor-pointer">System Status</span>
+          <span>Documentation</span>
+          <span>API Reference</span>
+          <span>Support</span>
+          <span>System Status</span>
         </div>
       </footer>
     </div>

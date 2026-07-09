@@ -29,16 +29,16 @@ function isRateLimited(ip: string, limit: number): boolean {
   return entry.count > limit;
 }
 
-// Periodic cleanup to prevent memory leaks
-if (typeof globalThis !== 'undefined') {
-  const cleanup = () => {
+// Note: Vercel serverless environments should ideally use @upstash/ratelimit 
+// since memory is not shared across regions or instances.
+// This in-memory implementation uses a probabilistic cleanup to avoid Edge runtime intervals.
+function runProbabilisticCleanup() {
+  if (Math.random() < 0.05) { // 5% chance on each request
     const now = Date.now();
     for (const [key, val] of rateLimitMap) {
       if (now > val.resetAt) rateLimitMap.delete(key);
     }
-  };
-  // Run every 5 minutes
-  setInterval(cleanup, 300_000).unref?.();
+  }
 }
 
 // ── Security Headers ────────────────────────────────────
@@ -72,6 +72,7 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 }
 
 export async function proxy(request: NextRequest) {
+  runProbabilisticCleanup();
   const { pathname } = request.nextUrl;
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
     || request.headers.get('x-real-ip')

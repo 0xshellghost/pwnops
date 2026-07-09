@@ -47,7 +47,7 @@ export function buildClearCookieHeader(): string {
   return parts.join('; ');
 }
 
-export async function signToken(payload: { userId: string; role: string; organizationId: string | null }): Promise<string> {
+export async function signToken(payload: { userId: string; role: string; organizationId: string }): Promise<string> {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -58,18 +58,20 @@ export async function signToken(payload: { userId: string; role: string; organiz
 export async function verifyToken(token: string) {
   try {
     const { payload } = await jwtVerify(token, jwtSecret);
-    return payload as { userId: string; role: string; organizationId: string | null };
+    return payload as { userId: string; role: string; organizationId: string };
   } catch {
     return null;
   }
 }
 
+import { cookies } from 'next/headers';
+
 /** Extract auth user from request cookies — for use in Route Handlers */
 export async function getAuthUser(request: Request) {
-  const cookieHeader = request.headers.get('cookie') || '';
-  const match = cookieHeader.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
-  if (!match) return null;
-  const decoded = await verifyToken(match[1]);
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
+  if (!token) return null;
+  const decoded = await verifyToken(token);
   if (!decoded) return null;
   const user = await getUserById(decoded.userId);
   if (!user) return null;

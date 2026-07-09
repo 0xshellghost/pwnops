@@ -25,8 +25,8 @@ model User {
   passwordHash   String
   role           String        @default("analyst")
   createdAt      DateTime      @default(now())
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
 
   // Relationships
   incidents    Incident[] @relation("Assignee")
@@ -47,8 +47,8 @@ model Incident {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   mitigationSteps String[]      // PostgreSQL supports string arrays natively
-  organizationId  String?
-  organization    Organization? @relation(fields: [organizationId], references: [id])
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id])
 }
 
 model Vulnerability {
@@ -62,8 +62,8 @@ model Vulnerability {
   affectedAsset  String
   status         String        @default("open")
   discoveredAt   DateTime      @default(now())
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
 }
 
 model Scan {
@@ -77,14 +77,14 @@ model Scan {
   startedAt      DateTime      @default(now())
   completedAt    DateTime?
   results        String?
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
 }
 
 model ThreatFeedEntry {
   id             String        @id @default(uuid())
   message        String
   timestamp      DateTime      @default(now())
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
 }
