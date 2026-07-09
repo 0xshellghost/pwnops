@@ -195,7 +195,7 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
       }
       return formatTestsslStdout(stdout);
     },
-    timeoutMs: 300_000, // 5 minutes
+    timeoutMs: 600_000, // 10 minutes
     usesOutputFile: true,
   },
 
