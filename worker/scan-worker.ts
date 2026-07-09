@@ -280,6 +280,37 @@ async function sendWebhookAlert(toolName: string, target: string, diffAlert: str
 
 // ── Lifecycle ────────────────────────────────────────────
 
+// ── Watchdog ─────────────────────────────────────────────
+// Cleans up scans that are stuck in 'running' state because
+// a worker crashed or was forcefully restarted.
+async function cleanZombieScans() {
+  try {
+    // 15 minutes ago (longer than our longest 10 min timeout)
+    const staleThreshold = new Date(Date.now() - 15 * 60 * 1000);
+    
+    const zombies = await prisma.scan.updateMany({
+      where: {
+        status: 'running',
+        startedAt: {
+          lt: staleThreshold,
+        }
+      },
+      data: {
+        status: 'failed',
+        progress: 100,
+        results: '[!] ERROR: Scan timed out or worker crashed (Zombie Process detected and killed by Watchdog).',
+        completedAt: new Date(),
+      }
+    });
+
+    if (zombies.count > 0) {
+      console.warn(`[${WORKER_ID}] 🧹 Cleaned up ${zombies.count} zombie scan(s)`);
+    }
+  } catch (err) {
+    console.error(`[${WORKER_ID}] Failed to clean zombies:`, err);
+  }
+}
+
 function printBanner() {
   console.log(`
 ╔══════════════════════════════════════════╗
@@ -334,14 +365,19 @@ async function start() {
   try {
     const count = await prisma.scan.count({ where: { status: 'queued' } });
     console.log(`  Queued scans in database: ${count}`);
+    
+    // Initial zombie cleanup
+    await cleanZombieScans();
+    
     console.log(`  Worker is now polling for jobs...\n`);
   } catch (err) {
     console.error('FATAL: Cannot connect to database:', err);
     process.exit(1);
   }
 
-  // Start polling loop
+  // Start polling loop and watchdog
   const interval = setInterval(pollForScans, POLL_INTERVAL_MS);
+  const watchdogInterval = setInterval(cleanZombieScans, 60_000); // Check every minute
 
   // Graceful shutdown
   const shutdown = async (signal: string) => {
@@ -349,6 +385,7 @@ async function start() {
     isShuttingDown = true;
     console.log(`\n  [${WORKER_ID}] Received ${signal}, shutting down gracefully...`);
     clearInterval(interval);
+    clearInterval(watchdogInterval);
 
     // Wait for active scans to finish (max 30s)
     const maxWait = Date.now() + 30_000;
