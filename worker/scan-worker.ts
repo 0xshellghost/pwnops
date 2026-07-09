@@ -123,10 +123,28 @@ async function processScan(scan: {
       data: { progress: 10, results: `[*] Initializing ${toolName} scan against ${target}...` },
     });
 
-    // Execute the real scan
+    // Start a simulated progress interval to keep the UI moving
+    let currentProgress = 10;
+    const progressInterval = setInterval(async () => {
+      if (currentProgress < 90) {
+        currentProgress += Math.floor(Math.random() * 8) + 2; // Jump up by 2-9%
+        if (currentProgress > 90) currentProgress = 90;
+        try {
+          await prisma.scan.update({
+            where: { id },
+            data: { progress: currentProgress },
+          });
+        } catch { /* ignore */ }
+      }
+    }, 5000); // Update DB every 5 seconds
+
+    // Execute the real scan (this blocks until completion)
     const result = await executeScan(toolName, target);
 
-    // Update with results
+    // Stop the progress simulation
+    clearInterval(progressInterval);
+
+    // Update with final results
     await prisma.scan.update({
       where: { id },
       data: {
