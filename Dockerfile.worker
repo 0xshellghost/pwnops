@@ -1,5 +1,5 @@
 # Use a Debian-based Node.js image to easily install system packages via apt
-FROM node:20-bookworm-slim
+FROM node:22-bookworm-slim
 
 # Install the required security tools: nmap, testssl.sh, and lynis
 RUN apt-get update && \
@@ -14,7 +14,7 @@ WORKDIR /app
 
 # Copy package manifests and install Node.js dependencies
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install
 
 # Copy the entire project codebase into the container
 # (In a real production setup, you might only copy the necessary lib/ and worker/ files)
