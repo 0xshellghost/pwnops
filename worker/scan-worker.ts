@@ -223,6 +223,12 @@ async function start() {
   // Start a dummy HTTP server so Render thinks this is a healthy "Web Service"
   const port = process.env.PORT || 10000;
   createServer((req, res) => {
+    if (req.url === '/tools' && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(getAvailableTools()));
+      return;
+    }
+
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('PwnOps Scan Worker is healthy!\n');
   }).listen(port, () => {
