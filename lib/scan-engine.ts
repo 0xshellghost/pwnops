@@ -269,8 +269,7 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
     resolveBinary: () => findBinary(['whatweb']),
     buildArgs: (target) => [
       target,
-      '--color=NEVER',
-      '--quiet'
+      '--color=NEVER'
     ],
     parseOutput: async (stdout) => {
       return `[*] WhatWeb Tech Stack Detection\n────────────────────────────────────────\n  ${stdout.trim()}`;
