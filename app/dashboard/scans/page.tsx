@@ -201,11 +201,39 @@ export default function ScansPage() {
             </div>
           )}
 
-          <button onClick={launchScan}
-            disabled={!canLaunch || launching || !target.trim() || !selectedTool || !currentTool?.available}
-            className="btn-primary w-full text-sm">
-            {launching ? '⟳ Queuing...' : '⚡ Launch Scan'}
-          </button>
+          <div className="flex gap-2">
+            <button onClick={launchScan}
+              disabled={!canLaunch || launching || !target.trim() || !selectedTool || !currentTool?.available}
+              className="btn-primary flex-1 text-sm">
+              {launching ? '⟳ Queuing...' : '⚡ Launch Single Scan'}
+            </button>
+            <button onClick={async () => {
+                if (!target.trim()) return;
+                setError('');
+                setLaunching(true);
+                const workflowTools = ['subfinder', 'whatweb', 'nmap', 'nuclei'];
+                const available = workflowTools.filter(t => tools.find(a => a.name === t)?.available);
+                if (available.length === 0) {
+                  setError('No workflow tools available.');
+                  setLaunching(false);
+                  return;
+                }
+                try {
+                  await Promise.all(available.map(t => fetch('/api/scans', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ toolName: t, target: target.trim() }),
+                  })));
+                  setTarget('');
+                  await fetchScans();
+                } catch { setError('Network error'); }
+                setLaunching(false);
+              }}
+              disabled={!canLaunch || launching || !target.trim()}
+              className="btn-outline flex-1 text-sm bg-accent-cyan/10 border-accent-cyan/50 text-accent-cyan hover:bg-accent-cyan/20">
+              {launching ? '⟳ Orchestrating...' : '🚀 Full Recon Workflow'}
+            </button>
+          </div>
           {!canLaunch && <p className="text-accent-red text-xs text-center">Viewer role cannot launch scans</p>}
         </div>
       </div>
