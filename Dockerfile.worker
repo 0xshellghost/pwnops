@@ -1,13 +1,27 @@
 # Use a Debian-based Node.js image to easily install system packages via apt
 FROM node:22-bookworm-slim
 
-# Install the required security tools: nmap, testssl.sh, and lynis
+# Install the required security tools
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
     nmap \
     testssl.sh \
     lynis \
+    whatweb \
+    wget \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Subfinder
+RUN wget https://github.com/projectdiscovery/subfinder/releases/download/v2.6.7/subfinder_2.6.7_linux_amd64.zip && \
+    unzip subfinder_2.6.7_linux_amd64.zip -d /usr/local/bin/ subfinder && \
+    rm subfinder_2.6.7_linux_amd64.zip
+
+# Install Nuclei & Download Templates
+RUN wget https://github.com/projectdiscovery/nuclei/releases/download/v3.3.0/nuclei_3.3.0_linux_amd64.zip && \
+    unzip nuclei_3.3.0_linux_amd64.zip -d /usr/local/bin/ nuclei && \
+    rm nuclei_3.3.0_linux_amd64.zip && \
+    nuclei -update-templates
 
 # Set the working directory inside the container
 WORKDIR /app

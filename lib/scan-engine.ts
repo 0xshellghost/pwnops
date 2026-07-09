@@ -217,6 +217,67 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
     timeoutMs: 300_000,
     usesOutputFile: false,
   },
+
+  // ─── Subfinder — Subdomain Enumeration ───────────────
+  'subfinder': {
+    displayName: 'Subfinder Subdomain Recon',
+    description: 'Fast passive subdomain enumeration',
+    resolveBinary: () => findBinary(['subfinder']),
+    buildArgs: (target, outputFile) => [
+      '-d', target,
+      '-oJ',
+      '-o', outputFile,
+      '-silent' // Only output results, no banner
+    ],
+    parseOutput: async (_stdout, _stderr, outputFile) => {
+      if (!outputFile || !existsSync(outputFile)) {
+        return '[!] Subfinder did not produce output';
+      }
+      const raw = await readFile(outputFile, 'utf-8');
+      return parseSubfinderJson(raw);
+    },
+    timeoutMs: 300_000,
+    usesOutputFile: true,
+  },
+
+  // ─── Nuclei — Vulnerability Scanning ─────────────────
+  'nuclei': {
+    displayName: 'Nuclei Vulnerability Scan',
+    description: 'Fast, template-based vulnerability scanner',
+    resolveBinary: () => findBinary(['nuclei']),
+    buildArgs: (target, outputFile) => [
+      '-u', target,
+      '-json-export', outputFile, // Write output to file
+      '-silent',
+      '-severity', 'critical,high,medium' // Focus on important findings
+    ],
+    parseOutput: async (_stdout, _stderr, outputFile) => {
+      if (!outputFile || !existsSync(outputFile)) {
+        return '[!] Nuclei did not produce output';
+      }
+      const raw = await readFile(outputFile, 'utf-8');
+      return parseNucleiJson(raw);
+    },
+    timeoutMs: 600_000,
+    usesOutputFile: true,
+  },
+
+  // ─── WhatWeb — Technology Stack Detection ────────────
+  'whatweb': {
+    displayName: 'WhatWeb Tech Stack',
+    description: 'Next generation web scanner for identifying technologies',
+    resolveBinary: () => findBinary(['whatweb']),
+    buildArgs: (target) => [
+      target,
+      '--color=NEVER',
+      '--quiet'
+    ],
+    parseOutput: async (stdout) => {
+      return `[*] WhatWeb Tech Stack Detection\n────────────────────────────────────────\n  ${stdout.trim()}`;
+    },
+    timeoutMs: 120_000,
+    usesOutputFile: false,
+  },
 };
 
 // ── Tool Execution ───────────────────────────────────────
@@ -567,6 +628,65 @@ function parseLynisOutput(stdout: string): string {
 function formatRawOutput(toolName: string, raw: string): string {
   const truncated = raw.length > 5000 ? raw.substring(0, 5000) + '\n\n[...truncated]' : raw;
   return `[*] ${toolName} — Raw Output\n────────────────────────────────────────\n${truncated}`;
+}
+
+/** Parse Subfinder JSON output */
+function parseSubfinderJson(raw: string): string {
+  const lines: string[] = [];
+  lines.push('[*] Subfinder Recon Results');
+  lines.push('────────────────────────────────────────');
+
+  const rawLines = raw.trim().split('\n');
+  let count = 0;
+  for (const line of rawLines) {
+    if (!line.trim()) continue;
+    try {
+      const data = JSON.parse(line);
+      lines.push(`  ● ${data.host}`);
+      count++;
+    } catch {
+       lines.push(`  ● ${line}`);
+       count++;
+    }
+  }
+
+  lines.push('────────────────────────────────────────');
+  lines.push(`[+] Found ${count} subdomain(s)`);
+  return lines.join('\n');
+}
+
+/** Parse Nuclei JSON output */
+function parseNucleiJson(raw: string): string {
+  const lines: string[] = [];
+  lines.push('[*] Nuclei Vulnerability Scan');
+  lines.push('────────────────────────────────────────');
+
+  const rawLines = raw.trim().split('\n');
+  let crit = 0, high = 0, med = 0;
+
+  for (const line of rawLines) {
+    if (!line.trim()) continue;
+    try {
+      const data = JSON.parse(line);
+      const sev = (data.info?.severity || 'info').toUpperCase();
+      const name = data.info?.name || 'Unknown';
+      const url = data.matched_at || '';
+      
+      let icon = 'ℹ';
+      if (sev === 'CRITICAL') { icon = '✗✗✗'; crit++; }
+      else if (sev === 'HIGH') { icon = '✗✗'; high++; }
+      else if (sev === 'MEDIUM') { icon = '✗'; med++; }
+
+      lines.push(`  ${icon} [${sev.padEnd(8)}] ${name}`);
+      lines.push(`      Target: ${url}`);
+    } catch {
+       lines.push(`  ? ${line}`);
+    }
+  }
+
+  lines.push('────────────────────────────────────────');
+  lines.push(`[+] ${crit} Critical, ${high} High, ${med} Medium findings`);
+  return lines.join('\n');
 }
 
 // ── Availability Check ───────────────────────────────────
