@@ -134,7 +134,7 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
       '--open',         // Only show open ports
       '-oX', outputFile, // XML output for structured parsing
       '--max-retries', '2',
-      '--host-timeout', '120s',
+      '--host-timeout', '240s',
       target,
     ],
     parseOutput: async (_stdout, _stderr, outputFile) => {
@@ -144,7 +144,7 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
       const xml = await readFile(outputFile, 'utf-8');
       return parseNmapXml(xml);
     },
-    timeoutMs: 180_000, // 3 minutes
+    timeoutMs: 300_000, // 5 minutes
     usesOutputFile: true,
   },
 
@@ -412,12 +412,19 @@ export async function executeScan(
 /** Parse nmap XML output into a human-readable port table */
 function parseNmapXml(xml: string): string {
   const lines: string[] = [];
+  
+  const unescapeXml = (str: string) => str
+    .replace(/&#45;/g, '-')
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
 
   // Extract scan info
   const nmapRunMatch = xml.match(/<nmaprun[^>]*args="([^"]*)"[^>]*startstr="([^"]*)"/);
   if (nmapRunMatch) {
-    lines.push(`[*] Nmap scan — ${nmapRunMatch[2]}`);
-    lines.push(`[*] Command: ${nmapRunMatch[1]}`);
+    lines.push(`[*] Nmap scan — ${unescapeXml(nmapRunMatch[2])}`);
+    lines.push(`[*] Command: ${unescapeXml(nmapRunMatch[1])}`);
     lines.push('────────────────────────────────────────');
   }
 
