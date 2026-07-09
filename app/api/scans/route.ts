@@ -7,18 +7,7 @@ import { getAuthUser } from '@/lib/auth';
 import { getScans, addScan, getThreatFeed } from '@/lib/store';
 import { validateTarget, validateToolName, getAvailableTools } from '@/lib/scan-engine';
 
-// Allowed tool names mapped to their scan-engine registry keys
-const TOOL_NAME_MAP: Record<string, string> = {
-  'Nmap Port Scanner': 'nmap',
-  'Nmap Network Recon': 'nmap-recon',
-  'testssl.sh SSL Audit': 'testssl',
-  'Lynis Config Audit': 'lynis',
-  // Support direct registry names too
-  'nmap': 'nmap',
-  'nmap-recon': 'nmap-recon',
-  'testssl': 'testssl',
-  'lynis': 'lynis',
-};
+// No hardcoded map needed, we validate directly against the engine registry
 
 export async function GET(request: Request) {
   const user = await getAuthUser(request);
@@ -42,11 +31,10 @@ export async function POST(request: Request) {
     return Response.json({ error: 'toolName and target are required' }, { status: 400 });
   }
 
-  // Resolve display name to registry key
-  const registryKey = TOOL_NAME_MAP[toolName];
-  if (!registryKey || !validateToolName(registryKey)) {
+  // Validate tool against the scan engine registry
+  if (!validateToolName(toolName)) {
     return Response.json({
-      error: `Unknown tool: "${toolName}". Available tools: ${Object.keys(TOOL_NAME_MAP).filter(k => !k.includes('-')).join(', ')}`,
+      error: `Unknown or disabled tool: "${toolName}".`,
     }, { status: 400 });
   }
 
@@ -60,7 +48,7 @@ export async function POST(request: Request) {
 
   // Queue the scan — the worker process will pick it up
   const scan = await addScan({
-    toolName: registryKey,
+    toolName: toolName,
     target: cleanTarget,
     status: 'queued',
     progress: 0,
