@@ -16,6 +16,7 @@ model Organization {
   vulnerabilities Vulnerability[]
   scans           Scan[]
   threatFeeds     ThreatFeedEntry[]
+  auditLogs       AuditLog[]
 }
 
 model User {
@@ -88,3 +89,19 @@ model ThreatFeedEntry {
   organizationId String
   organization   Organization  @relation(fields: [organizationId], references: [id])
 }
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  userId         String
+  action         String   // LOGIN, LOGOUT, SCAN_LAUNCH, INCIDENT_CREATE, ROLE_CHANGE, etc.
+  resource       String?  // e.g. "scan:abc123", "incident:def456"
+  details        String?  // Human-readable description
+  ip             String?  // Client IP address
+  timestamp      DateTime @default(now())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, timestamp])
+  @@index([userId])
+}
+

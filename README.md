@@ -40,14 +40,16 @@ PwnOps is a high-fidelity, high-performance automated vulnerability management a
 
 ## Pre-Seeded Accounts
 
-The in-memory datastore initializes with the following accounts for testing:
+The database seeder initializes with the following accounts for testing. You can override the default passwords via environment variables (`SEED_ADMIN_PASSWORD`, `SEED_ANALYST_PASSWORD`, `SEED_VIEWER_PASSWORD`).
 
-| Role       | Email                | Password      | Access Level                    |
-|------------|----------------------|---------------|---------------------------------|
-| Admin      | \`admin@pwnops.sec\`   | \`admin123\`    | Full access, user management    |
-| Analyst    | \`j.doe@pwnops.sec\`   | \`analyst123\`  | Incident & scan management      |
-| Analyst    | \`m.smith@pwnops.sec\` | \`analyst123\`  | Incident & scan management      |
-| Viewer     | \`viewer@pwnops.sec\`  | \`viewer123\`   | Read-only access                |
+| Role       | Email                | Default Password           | Access Level                    |
+|------------|----------------------|----------------------------|---------------------------------|
+| Admin      | \`admin@pwnops.sec\`   | \`PwnOps!Admin#2026\`       | Full access, user management    |
+| Analyst    | \`j.doe@pwnops.sec\`   | \`PwnOps!Analyst#2026\`     | Incident & scan management      |
+| Analyst    | \`m.smith@pwnops.sec\` | \`PwnOps!Analyst#2026\`     | Incident & scan management      |
+| Viewer     | \`viewer@pwnops.sec\`  | \`PwnOps!Viewer#2026\`      | Read-only access                |
+
+> **⚠️ Important:** Change these passwords immediately after first login in production environments.
 
 ## Production Deployment
 

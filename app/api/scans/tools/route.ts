@@ -14,7 +14,11 @@ export async function GET(request: Request) {
 
   if (workerUrl) {
     try {
-      const res = await fetch(`${workerUrl.replace(/\/$/, '')}/tools`, { cache: 'no-store' });
+      const headers: Record<string, string> = {};
+      if (process.env.WORKER_API_KEY) {
+        headers['x-api-key'] = process.env.WORKER_API_KEY;
+      }
+      const res = await fetch(`${workerUrl.replace(/\/$/, '')}/tools`, { cache: 'no-store', headers });
       if (res.ok) {
         tools = await res.json();
       }

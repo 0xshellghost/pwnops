@@ -2,7 +2,7 @@
 // PwnOps — Incidents API
 // ──────────────────────────────────────────────────────────
 import { getAuthUser } from '@/lib/auth';
-import { getIncidents, addIncident, updateIncidentStatus } from '@/lib/store';
+import { getIncidents, addIncident, updateIncidentStatus, logAudit } from '@/lib/store';
 
 const VALID_SEVERITIES = ['critical', 'high', 'medium', 'low'] as const;
 const VALID_STATUSES = ['new', 'investigating', 'containing', 'resolved'] as const;
@@ -41,6 +41,15 @@ export async function POST(request: Request) {
     organizationId: user.organizationId,
   });
 
+  // Audit log
+  logAudit({
+    userId: user.id,
+    action: 'INCIDENT_CREATE',
+    resource: `incident:${incident.id}`,
+    details: `Created incident "${title}" [${severity}]`,
+    organizationId: user.organizationId,
+  });
+
   return Response.json({ incident }, { status: 201 });
 }
 
@@ -62,6 +71,15 @@ export async function PATCH(request: Request) {
 
   const incident = await updateIncidentStatus(id, status, user.organizationId!);
   if (!incident) return Response.json({ error: 'Incident not found' }, { status: 404 });
+
+  // Audit log
+  logAudit({
+    userId: user.id,
+    action: 'INCIDENT_STATUS_CHANGE',
+    resource: `incident:${id}`,
+    details: `Changed incident status to "${status}"`,
+    organizationId: user.organizationId,
+  });
 
   return Response.json({ incident });
 }

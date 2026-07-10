@@ -18,6 +18,7 @@ import { readFile, unlink } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
+import { resolve4 } from 'dns/promises';
 
 const execFileAsync = promisify(execFile);
 
@@ -96,6 +97,48 @@ export function validateTarget(raw: string): string | null {
   }
 
   return null;
+}
+
+/** Check if an IP is in a blocked or private range */
+function isBlockedIp(ip: string): boolean {
+  for (const blocked of BLOCKED_PREFIXES) {
+    if (ip.startsWith(blocked)) return true;
+  }
+  if (process.env.BLOCK_PRIVATE_SCANS === 'true') {
+    const octets = ip.split('.').map(Number);
+    if (octets.length === 4) {
+      if (octets[0] === 10) return true;
+      if (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) return true;
+      if (octets[0] === 192 && octets[1] === 168) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Async target validation with DNS rebinding protection.
+ * Resolves FQDNs to their IP addresses and checks them against blocked ranges.
+ */
+export async function validateTargetSafe(raw: string): Promise<string | null> {
+  const target = validateTarget(raw);
+  if (!target) return null;
+
+  // If it's an FQDN, resolve DNS and verify the IPs are safe
+  if (VALID_FQDN.test(target) || VALID_HOSTNAME.test(target)) {
+    try {
+      const ips = await resolve4(target);
+      for (const ip of ips) {
+        if (isBlockedIp(ip)) {
+          console.warn(`[PwnOps] DNS rebinding blocked: ${target} resolves to ${ip}`);
+          return null;
+        }
+      }
+    } catch {
+      // DNS resolution failed — target may not exist, let the scan tool handle it
+    }
+  }
+
+  return target;
 }
 
 /** Validate a tool name against the registry */

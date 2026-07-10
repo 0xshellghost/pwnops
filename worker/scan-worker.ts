@@ -346,8 +346,21 @@ async function start() {
   // ── Render Free Tier Hack ──
   // Start a dummy HTTP server so Render thinks this is a healthy "Web Service"
   const port = process.env.PORT || 10000;
+  const workerApiKey = process.env.WORKER_API_KEY;
+
   createServer((req, res) => {
     if (req.url === '/tools' && req.method === 'GET') {
+      // Require API key if configured
+      if (workerApiKey) {
+        const authHeader = req.headers['x-api-key'] || req.headers['authorization'];
+        const providedKey = typeof authHeader === 'string' ? authHeader.replace('Bearer ', '') : '';
+        if (providedKey !== workerApiKey) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Unauthorized' }));
+          return;
+        }
+      }
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(getAvailableTools()));
       return;
@@ -356,7 +369,8 @@ async function start() {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('PwnOps Scan Worker is healthy!\n');
   }).listen(port, () => {
-    console.log(`\n  [Network] Dummy HTTP health-check server running on port ${port}`);
+    console.log(`\n  [Network] HTTP health-check server running on port ${port}`);
+    if (workerApiKey) console.log(`  [Security] Worker API key authentication enabled`);
   });
 
   printBanner();

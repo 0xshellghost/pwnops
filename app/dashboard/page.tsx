@@ -6,6 +6,7 @@ interface DashData {
   incidents: { severity: string; status: string }[];
   vulns: { severity: string; status: string; cveId: string; affectedAsset: string; cvssScore: number }[];
   threatFeed: { message: string; timestamp: string }[];
+  scans: { status: string; startedAt: string; completedAt: string | null }[];
 }
 
 function AnimatedNumber({ target, suffix = '' }: { target: number; suffix?: string }) {
@@ -45,6 +46,7 @@ export default function DashboardHome() {
         incidents: inc.incidents || [],
         vulns: vul.vulnerabilities || [],
         threatFeed: scn.threatFeed || [],
+        scans: scn.scans || [],
       });
     } finally {
       setIsRefreshing(false);
@@ -89,12 +91,12 @@ export default function DashboardHome() {
         
         {/* ─── Left Column (Main Metrics & Data) ─── */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Security Posture */}
+          {/* Computed Metrics */}
           <div className="card-glass p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="font-bold text-xl">Security Posture</h2>
-                <p className="text-text-muted text-sm mt-1">Global Risk Index: Nominal</p>
+                <p className="text-text-muted text-sm mt-1">Computed from live data</p>
               </div>
               <span className={`badge px-3 py-1 ${criticalIncidents > 0 ? 'badge-critical' : 'badge-low'}`}>
                 {criticalIncidents > 0 ? `${criticalIncidents} Critical` : 'Stable'}
@@ -103,15 +105,15 @@ export default function DashboardHome() {
             <div className="grid grid-cols-2 gap-6 mt-6">
               <div className="bg-bg-surface/50 p-4 rounded-xl border border-border/50">
                 <div className="text-4xl font-bold text-accent-cyan">
-                  <AnimatedNumber target={98} suffix="." />4%
+                  <AnimatedNumber target={data.scans.length > 0 ? Math.round(data.scans.filter(s => s.status === 'completed').length / data.scans.length * 100) : 0} suffix="" />%
                 </div>
-                <div className="label-mono mt-2">Operational Uptime</div>
+                <div className="label-mono mt-2">Scan Success Rate</div>
               </div>
               <div className="bg-bg-surface/50 p-4 rounded-xl border border-border/50">
                 <div className="text-4xl font-bold text-text-primary">
-                  <AnimatedNumber target={12} /><span className="text-xl text-text-muted ml-1">ms</span>
+                  <AnimatedNumber target={data.incidents.length > 0 ? Math.round(data.incidents.filter(i => i.status === 'resolved').length / data.incidents.length * 100) : 0} suffix="" />%
                 </div>
-                <div className="label-mono mt-2">Avg Response Time</div>
+                <div className="label-mono mt-2">Incidents Resolved</div>
               </div>
             </div>
           </div>
@@ -146,22 +148,22 @@ export default function DashboardHome() {
             </div>
           </div>
 
-          {/* Sensor Network Health */}
+          {/* Scan Activity Summary */}
           <div className="card-glass p-6">
-            <h3 className="font-bold text-lg mb-5">Sensor Network Health</h3>
+            <h3 className="font-bold text-lg mb-5">Scan Activity</h3>
             <div className="space-y-5">
               {[
-                { label: 'Cloud Connectors', value: 100, color: 'bg-accent-cyan' },
-                { label: 'Endpoint Agents', value: 94, color: 'bg-accent-purple' },
-                { label: 'Network Taps', value: 92, color: 'bg-accent-blue' },
+                { label: 'Completed', value: data.scans.filter(s => s.status === 'completed').length, total: Math.max(data.scans.length, 1), color: 'bg-accent-green' },
+                { label: 'Failed', value: data.scans.filter(s => s.status === 'failed').length, total: Math.max(data.scans.length, 1), color: 'bg-accent-red' },
+                { label: 'Open Vulnerabilities', value: data.vulns.filter(v => v.status === 'open').length, total: Math.max(data.vulns.length, 1), color: 'bg-accent-amber' },
               ].map(s => (
                 <div key={s.label}>
                   <div className="flex justify-between text-sm mb-2">
                     <span className="label-mono">{s.label}</span>
-                    <span className="text-text-primary font-bold">{s.value}%</span>
+                    <span className="text-text-primary font-bold">{s.value}</span>
                   </div>
                   <div className="progress-bar h-2">
-                    <div className={`progress-fill ${s.color}`} style={{ width: `${s.value}%` }} />
+                    <div className={`progress-fill ${s.color}`} style={{ width: `${Math.round(s.value / s.total * 100)}%` }} />
                   </div>
                 </div>
               ))}

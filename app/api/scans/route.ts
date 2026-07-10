@@ -4,8 +4,8 @@
 // execution happens in the scan worker process.
 // ──────────────────────────────────────────────────────────
 import { getAuthUser } from '@/lib/auth';
-import { getScans, addScan, getThreatFeed } from '@/lib/store';
-import { validateTarget, validateToolName, getAvailableTools } from '@/lib/scan-engine';
+import { getScans, addScan, getThreatFeed, logAudit } from '@/lib/store';
+import { validateTargetSafe, validateToolName } from '@/lib/scan-engine';
 
 // No hardcoded map needed, we validate directly against the engine registry
 
@@ -38,8 +38,8 @@ export async function POST(request: Request) {
     }, { status: 400 });
   }
 
-  // Validate target
-  const cleanTarget = validateTarget(target);
+  // Validate target (with DNS rebinding protection)
+  const cleanTarget = await validateTargetSafe(target);
   if (!cleanTarget) {
     return Response.json({
       error: 'Invalid scan target. Allowed formats: IPv4 (10.0.0.1), CIDR (10.0.0.0/24), or FQDN (example.com). Localhost and link-local addresses are blocked.',
@@ -56,6 +56,17 @@ export async function POST(request: Request) {
     startedAt: new Date().toISOString(),
     completedAt: null,
     results: null,
+    organizationId: user.organizationId,
+  });
+
+  // Audit log: scan launched
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  logAudit({
+    userId: user.id,
+    action: 'SCAN_LAUNCH',
+    resource: `scan:${scan.id}`,
+    details: `Launched ${toolName} scan against ${cleanTarget}`,
+    ip,
     organizationId: user.organizationId,
   });
 

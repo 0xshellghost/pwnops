@@ -2,7 +2,7 @@
 // PwnOps — Login API
 // ──────────────────────────────────────────────────────────
 import bcrypt from 'bcryptjs';
-import { findUserByEmail, seedIfEmpty } from '@/lib/store';
+import { findUserByEmail, seedIfEmpty, logAudit } from '@/lib/store';
 import { signToken, buildCookieHeader } from '@/lib/auth';
 
 export async function POST(request: Request) {
@@ -37,6 +37,16 @@ export async function POST(request: Request) {
     }
 
     const token = await signToken({ userId: user.id, role: user.role, organizationId: user.organizationId });
+
+    // Audit log: successful login
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    logAudit({
+      userId: user.id,
+      action: 'LOGIN',
+      details: `Successful login from ${ip}`,
+      ip,
+      organizationId: user.organizationId,
+    });
 
     const response = Response.json({
       user: { id: user.id, email: user.email, name: user.name, role: user.role },

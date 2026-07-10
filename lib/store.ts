@@ -103,7 +103,12 @@ export async function addScan(s: Omit<Scan, 'id'>) {
     },
   });
 }
-export async function updateScan(id: string, update: Partial<Pick<Scan, 'progress' | 'status' | 'results' | 'completedAt'>>) {
+export async function updateScan(id: string, update: Partial<Pick<Scan, 'progress' | 'status' | 'results' | 'completedAt'>>, organizationId?: string) {
+  // If organizationId is provided, verify the scan belongs to that org
+  if (organizationId) {
+    const scan = await prisma.scan.findUnique({ where: { id } });
+    if (!scan || scan.organizationId !== organizationId) return null;
+  }
   return prisma.scan.update({ where: { id }, data: update });
 }
 
@@ -181,4 +186,37 @@ export async function seedIfEmpty() {
   })();
 
   return seedPromise;
+}
+// ── Audit Logging ────────────────────────────────────────
+export async function logAudit(entry: {
+  userId: string;
+  action: string;
+  resource?: string;
+  details?: string;
+  ip?: string;
+  organizationId: string;
+}) {
+  try {
+    await prisma.auditLog.create({
+      data: {
+        userId: entry.userId,
+        action: entry.action,
+        resource: entry.resource || null,
+        details: entry.details || null,
+        ip: entry.ip || null,
+        organizationId: entry.organizationId,
+      },
+    });
+  } catch (err) {
+    // Audit logging should never crash the app — log and continue
+    console.error('Audit log write failed:', err);
+  }
+}
+
+export async function getAuditLogs(organizationId: string, limit = 50) {
+  return prisma.auditLog.findMany({
+    where: { organizationId },
+    orderBy: { timestamp: 'desc' },
+    take: limit,
+  });
 }

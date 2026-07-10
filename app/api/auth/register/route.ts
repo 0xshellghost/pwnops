@@ -6,6 +6,14 @@ import { findUserByEmail, addUser } from '@/lib/store';
 import { signToken, buildCookieHeader } from '@/lib/auth';
 
 const MIN_PASSWORD_LENGTH = 8;
+const MAX_EMAIL_LENGTH = 254;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Optional: Restrict registration to specific domains for SOC environments
+// Set ALLOWED_REGISTRATION_DOMAINS=yourcompany.com,partner.com in .env
+const ALLOWED_DOMAINS = process.env.ALLOWED_REGISTRATION_DOMAINS
+  ? process.env.ALLOWED_REGISTRATION_DOMAINS.split(',').map(d => d.trim().toLowerCase())
+  : null;
 
 export async function POST(request: Request) {
   try {
@@ -20,9 +28,32 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Invalid input types' }, { status: 400 });
     }
 
+    // Email format validation
+    if (email.length > MAX_EMAIL_LENGTH || !EMAIL_REGEX.test(email)) {
+      return Response.json({ error: 'Invalid email format' }, { status: 400 });
+    }
+
+    // Domain restriction (if configured)
+    if (ALLOWED_DOMAINS) {
+      const domain = email.split('@')[1]?.toLowerCase();
+      if (!domain || !ALLOWED_DOMAINS.includes(domain)) {
+        return Response.json(
+          { error: 'Registration is restricted to authorized organization domains. Contact your admin for access.' },
+          { status: 403 }
+        );
+      }
+    }
+
     // Server-side password strength validation
     if (password.length < MIN_PASSWORD_LENGTH) {
       return Response.json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` }, { status: 400 });
+    }
+
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
+      return Response.json(
+        { error: 'Password must contain at least one uppercase letter, one lowercase letter, and one digit' },
+        { status: 400 }
+      );
     }
 
     if (name.trim().length === 0 || name.length > 100) {

@@ -2,7 +2,7 @@
 // PwnOps — Users API
 // ──────────────────────────────────────────────────────────
 import { getAuthUser } from '@/lib/auth';
-import { getUsers, updateUserRole, addUser, findUserByEmail, getOrganizationById } from '@/lib/store';
+import { getUsers, updateUserRole, addUser, findUserByEmail, getOrganizationById, logAudit } from '@/lib/store';
 import bcrypt from 'bcryptjs';
 
 const VALID_ROLES = ['admin', 'analyst', 'viewer'] as const;
@@ -35,6 +35,15 @@ export async function PATCH(request: Request) {
 
   const updated = await updateUserRole(id, role, user.organizationId!);
   if (!updated) return Response.json({ error: 'User not found' }, { status: 404 });
+
+  // Audit log: role change
+  logAudit({
+    userId: user.id,
+    action: 'ROLE_CHANGE',
+    resource: `user:${id}`,
+    details: `Changed user ${updated.email} role to "${role}"`,
+    organizationId: user.organizationId,
+  });
 
   return Response.json({ user: { id: updated.id, email: updated.email, name: updated.name, role: updated.role } });
 }
