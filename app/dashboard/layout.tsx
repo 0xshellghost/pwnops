@@ -165,7 +165,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     <div className={`min-h-screen bg-bg-primary dashboard-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       {/* ── Offline Banner ── */}
       {isOffline && (
-        <div className="bg-accent-amber text-bg-primary text-center text-xs font-bold py-1.5 animate-pulse-slow z-[60] relative">
+        <div className="bg-accent-amber text-bg-primary text-center text-xs font-bold py-1.5 animate-pulse-slow z-60 relative">
           ⚠️ You are currently offline. Some features may be unavailable.
         </div>
       )}
@@ -174,7 +174,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
         {/* Brand */}
         <div className="sidebar-brand">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-accent-cyan flex-shrink-0">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-accent-cyan shrink-0">
             <path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill="currentColor" opacity="0.2" stroke="currentColor" strokeWidth="1.5"/>
           </svg>
           <span className="text-accent-cyan font-bold text-lg" style={{ fontFamily: 'var(--font-mono)' }}>PwnOps</span>
@@ -202,7 +202,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         <div className="sidebar-footer">
           {user && (
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-accent-cyan/10 border border-accent-cyan/30 flex items-center justify-center text-xs font-bold text-accent-cyan flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-accent-cyan/10 border border-accent-cyan/30 flex items-center justify-center text-xs font-bold text-accent-cyan shrink-0">
                 {user.name.split(' ').map(w => w[0]).join('')}
               </div>
               <div className="sidebar-user-info flex-1 min-w-0">
@@ -227,7 +227,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
       {/* ── Top Bar ── */}
       <header className="sticky top-0 z-40 top-bar-physical px-4 py-3">
-        <div className="max-w-[90rem] mx-auto flex items-center justify-between w-full">
+        <div className="max-w-90rem mx-auto flex items-center justify-between w-full">
           {/* Mobile: show brand. Desktop: show breadcrumbs */}
           <div className="flex items-center gap-3 lg:hidden">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-accent-cyan">
@@ -261,7 +261,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* ── Page Content ── */}
-      <main className="px-4 py-4 max-w-[90rem] mx-auto w-full">
+      <main className="px-4 py-4 max-w-90rem mx-auto w-full">
         {children}
       </main>
 

@@ -66,7 +66,7 @@ export default function KeyboardShortcuts() {
   if (!showHelp) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowHelp(false)}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-100 flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowHelp(false)}>
       <div className="card-glass w-full max-w-md p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">Keyboard Shortcuts</h2>
