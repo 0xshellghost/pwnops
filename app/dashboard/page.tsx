@@ -54,6 +54,15 @@ export default function DashboardHome() {
     }
   }
 
+  async function simulateThreat() {
+    try {
+      await fetch('/api/simulate-threat', { method: 'POST' });
+      await loadData();
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   useEffect(() => {
     loadData();
   }, []);
@@ -187,9 +196,14 @@ export default function DashboardHome() {
 
           {/* Live Threat Feed */}
           <div className="card-glass p-6">
-            <div className="flex items-center gap-2 mb-5">
-              <span className="w-2.5 h-2.5 rounded-full bg-accent-green animate-pulse-dot" />
-              <span className="label-mono text-accent-green">Live Threat Vector Feed</span>
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-accent-green animate-pulse-dot" />
+                <span className="label-mono text-accent-green">Live Threat Vector Feed</span>
+              </div>
+              <button onClick={simulateThreat} className="text-xs text-text-muted hover:text-accent-cyan flex items-center gap-1 border border-border/50 px-2 py-1 rounded hover:bg-accent-cyan/10 transition-colors">
+                + Simulate
+              </button>
             </div>
             <ul className="space-y-3">
               {data.threatFeed.map((t, i) => (
