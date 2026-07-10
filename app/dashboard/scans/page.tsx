@@ -76,30 +76,39 @@ export default function ScansPage() {
     let reconnectTimeout: ReturnType<typeof setTimeout>;
 
     const connect = () => {
-      ws = new WebSocket(wsUrl);
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'SCAN_UPDATE') {
-            setScans(prev => prev.map(s => {
-              if (s.id === data.scanId) {
-                return {
-                  ...s,
-                  status: data.status,
-                  progress: data.progress,
-                  results: data.results !== null ? data.results : s.results,
-                  completedAt: (data.status === 'completed' || data.status === 'failed') ? new Date().toISOString() : s.completedAt
-                };
-              }
-              return s;
-            }));
-          }
-        } catch (e) { /* ignore */ }
-      };
-      
-      ws.onclose = () => {
-        reconnectTimeout = setTimeout(connect, 3000);
-      };
+      try {
+        // Prevent SecurityError on HTTPS pages when connecting to insecure ws://
+        if (wsUrl.startsWith('ws://') && window.location.protocol === 'https:') {
+          console.warn('Skipping insecure WebSocket connection on HTTPS page.');
+          return;
+        }
+        ws = new WebSocket(wsUrl);
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'SCAN_UPDATE') {
+              setScans(prev => prev.map(s => {
+                if (s.id === data.scanId) {
+                  return {
+                    ...s,
+                    status: data.status,
+                    progress: data.progress,
+                    results: data.results !== null ? data.results : s.results,
+                    completedAt: (data.status === 'completed' || data.status === 'failed') ? new Date().toISOString() : s.completedAt
+                  };
+                }
+                return s;
+              }));
+            }
+          } catch (e) { /* ignore parse error */ }
+        };
+        
+        ws.onclose = () => {
+          reconnectTimeout = setTimeout(connect, 3000);
+        };
+      } catch (err) {
+        console.error('WebSocket connection failed:', err);
+      }
     };
 
     connect();
