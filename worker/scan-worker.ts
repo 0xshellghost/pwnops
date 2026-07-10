@@ -15,6 +15,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { executeScan, getAvailableTools, validateTarget, validateToolName } from '../lib/scan-engine';
 import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
+import { CronExpressionParser } from 'cron-parser';
 
 // ── Configuration ────────────────────────────────────────
 const POLL_INTERVAL_MS = Number(process.env.WORKER_POLL_INTERVAL) || 3000;
@@ -47,6 +48,44 @@ function broadcastScanUpdate(scanId: string, status: string, progress: number, r
       client.send(msg);
     }
   });
+}
+
+async function processScheduledScans() {
+  if (isShuttingDown) return;
+  try {
+    const dueSchedules = await prisma.scheduledScan.findMany({
+      where: { nextRunAt: { lte: new Date() } }
+    });
+
+    for (const schedule of dueSchedules) {
+      await prisma.scan.create({
+        data: {
+          toolName: schedule.toolName,
+          target: schedule.target,
+          status: 'queued',
+          triggeredById: schedule.createdBy,
+          organizationId: schedule.organizationId
+        }
+      });
+
+      let nextRun: Date;
+      try {
+        const interval = CronExpressionParser.parse(schedule.cronSchedule);
+        nextRun = interval.next().toDate();
+      } catch (err) {
+        console.error(`[${WORKER_ID}] Invalid cron expression for schedule ${schedule.id}`);
+        nextRun = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+      }
+
+      await prisma.scheduledScan.update({
+        where: { id: schedule.id },
+        data: { nextRunAt: nextRun }
+      });
+      console.log(`[${WORKER_ID}] ⏰ Enqueued scheduled scan for ${schedule.target} using ${schedule.toolName}. Next run: ${nextRun}`);
+    }
+  } catch (err) {
+    console.error(`[${WORKER_ID}] Error processing scheduled scans:`, err);
+  }
 }
 
 // ── Main Loop ────────────────────────────────────────────
@@ -101,8 +140,9 @@ async function processScan(scan: {
   id: string;
   toolName: string;
   target: string;
+  organizationId: string;
 }) {
-  const { id, toolName, target } = scan;
+  const { id, toolName, target, organizationId } = scan;
   console.log(`[${WORKER_ID}] Starting scan ${id}: ${toolName} → ${target}`);
 
   try {
@@ -213,9 +253,7 @@ async function processScan(scan: {
     broadcastScanUpdate(id, finalStatus, 100, structuredResults);
 
     // Fire off enterprise webhook alert
-    if (result.success) {
-      await sendWebhookAlert(toolName, target, diffAlert).catch(() => {});
-    }
+    await sendWebhookAlert(toolName, target, diffAlert, result.success, organizationId).catch(() => {});
 
     totalProcessed++;
     console.log(
@@ -291,14 +329,24 @@ function generateDiff(oldOut: string, newOut: string): string | null {
   ].filter(Boolean).join('\n');
 }
 
-// Enterprise Webhook Alerting (Slack/Discord)
-async function sendWebhookAlert(toolName: string, target: string, diffAlert: string | null) {
-  if (!WEBHOOK_URL) return;
-  
+// Enterprise Webhook Alerting (Slack/Discord/SIEM)
+async function sendWebhookAlert(toolName: string, target: string, diffAlert: string | null, success: boolean, organizationId: string) {
   try {
+    const eventType = success ? 'SCAN_COMPLETED' : 'SCAN_FAILED';
+    
+    // Also include legacy WEBHOOK_URL from env if set
+    const integrations = await prisma.integration.findMany({
+      where: { organizationId, events: { has: eventType } }
+    });
+
+    const endpoints = integrations.map(i => i.endpoint);
+    if (WEBHOOK_URL && !endpoints.includes(WEBHOOK_URL)) endpoints.push(WEBHOOK_URL);
+
+    if (endpoints.length === 0) return;
+
     const title = diffAlert 
       ? `🚨 **[NEW FINDINGS]** ${toolName} scan on \`${target}\``
-      : `✅ **[COMPLETED]** ${toolName} scan on \`${target}\``;
+      : (success ? `✅ **[COMPLETED]** ${toolName} scan on \`${target}\`` : `❌ **[FAILED]** ${toolName} scan on \`${target}\``);
       
     // Discord / Slack compatible payload format
     const payload = {
@@ -310,13 +358,16 @@ async function sendWebhookAlert(toolName: string, target: string, diffAlert: str
       }] : undefined
     };
 
-    await fetch(WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    // Dispatch to all endpoints
+    await Promise.all(endpoints.map(ep => 
+      fetch(ep, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(err => console.error(`[${WORKER_ID}] Webhook failed for ${ep}:`, err.message))
+    ));
   } catch (err) {
-    console.error(`[${WORKER_ID}] Webhook failed:`, err);
+    console.error(`[${WORKER_ID}] Webhook dispatch failed:`, err);
   }
 }
 
@@ -441,6 +492,7 @@ async function start() {
   // Start polling loop and watchdog
   const interval = setInterval(pollForScans, POLL_INTERVAL_MS);
   const watchdogInterval = setInterval(cleanZombieScans, 60_000); // Check every minute
+  const schedulerInterval = setInterval(processScheduledScans, 10_000); // Check schedules every 10s
 
   // Graceful shutdown
   const shutdown = async (signal: string) => {
@@ -449,6 +501,7 @@ async function start() {
     console.log(`\n  [${WORKER_ID}] Received ${signal}, shutting down gracefully...`);
     clearInterval(interval);
     clearInterval(watchdogInterval);
+    clearInterval(schedulerInterval);
 
     // Wait for active scans to finish (max 30s)
     const maxWait = Date.now() + 30_000;

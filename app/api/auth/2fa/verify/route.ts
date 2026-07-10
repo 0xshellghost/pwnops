@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/store';
 import { NextResponse } from 'next/server';
-import { authenticator } from 'otplib';
+import { verifySync } from 'otplib';
 import { signToken } from '@/lib/auth';
 
 export async function POST(request: Request) {
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: '2FA not enabled for this user' }, { status: 400 });
   }
 
-  const isValid = authenticator.check(token, dbUser.twoFactorSecret);
+  const isValid = verifySync({ token, secret: dbUser.twoFactorSecret }).valid;
   if (!isValid) return NextResponse.json({ error: 'Invalid 2FA code' }, { status: 401 });
 
   const jwt = await signToken({ userId: dbUser.id, role: dbUser.role, organizationId: dbUser.organizationId });

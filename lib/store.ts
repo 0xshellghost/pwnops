@@ -149,7 +149,7 @@ export async function addScan(s: Omit<Scan, 'id'>) {
       triggeredById: s.triggeredById,
       startedAt: s.startedAt,
       completedAt: s.completedAt,
-      results: s.results,
+      results: s.results ?? undefined,
       organizationId: s.organizationId,
     },
   });

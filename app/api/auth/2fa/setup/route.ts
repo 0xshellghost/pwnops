@@ -1,7 +1,7 @@
 import { getAuthUser } from '@/lib/auth';
 import { prisma } from '@/lib/store';
 import { NextResponse } from 'next/server';
-import { authenticator } from 'otplib';
+import { generateSecret, generateURI, verifySync } from 'otplib';
 import QRCode from 'qrcode';
 
 export async function GET(request: Request) {
@@ -12,8 +12,8 @@ export async function GET(request: Request) {
   if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
   // Generate a new secret if not enabled yet, or if they want to reset
-  const secret = authenticator.generateSecret();
-  const otpauth = authenticator.keyuri(dbUser.email, 'PwnOps', secret);
+  const secret = generateSecret();
+  const otpauth = generateURI({ label: dbUser.email, issuer: 'PwnOps', secret });
   
   const qrCodeUrl = await QRCode.toDataURL(otpauth);
 
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   const { token, secret } = await request.json();
   if (!token || !secret) return NextResponse.json({ error: 'Token and secret required' }, { status: 400 });
 
-  const isValid = authenticator.check(token, secret);
+  const isValid = verifySync({ token, secret }).valid;
   if (!isValid) return NextResponse.json({ error: 'Invalid 2FA code' }, { status: 400 });
 
   // Save the secret and enable 2FA

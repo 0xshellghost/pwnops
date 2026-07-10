@@ -2,7 +2,8 @@
 // PwnOps — JWT Auth Helpers
 // ──────────────────────────────────────────────────────────
 import { SignJWT, jwtVerify } from 'jose';
-import { getUserById } from './store';
+import { getUserById, prisma } from './store';
+import { createHash } from 'crypto';
 
 // ── Centralized JWT Secret ──────────────────────────────
 // CRITICAL: No fallback — crash loudly if JWT_SECRET is missing.
@@ -68,6 +69,25 @@ import { cookies } from 'next/headers';
 
 /** Extract auth user from request cookies — for use in Route Handlers */
 export async function getAuthUser(request: Request) {
+  // 1. Try Bearer token
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const rawKey = authHeader.substring(7);
+    const keyHash = createHash('sha256').update(rawKey).digest('hex');
+    const apiKey = await prisma.apiKey.findUnique({
+      where: { keyHash },
+    });
+    
+    if (apiKey) {
+      prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } }).catch(() => {});
+      const user = await getUserById(apiKey.createdBy);
+      if (user) {
+        return { id: user.id, email: user.email, name: user.name, role: user.role, organizationId: apiKey.organizationId };
+      }
+    }
+  }
+
+  // 2. Try Cookie
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return null;

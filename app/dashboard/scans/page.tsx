@@ -41,6 +41,8 @@ export default function ScansPage() {
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [cronSchedule, setCronSchedule] = useState('0 0 * * *');
 
   const fetchScans = useCallback(async () => {
     const res = await fetch(`/api/scans?page=${page}&limit=10`);
@@ -113,18 +115,34 @@ export default function ScansPage() {
     setError('');
     setLaunching(true);
     try {
-      const res = await fetch('/api/scans', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ toolName: selectedTool, target: target.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Failed to launch scan');
+      if (isScheduled) {
+        const res = await fetch('/api/scans/schedule', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ toolName: selectedTool, target: target.trim(), cronSchedule }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || 'Failed to schedule scan');
+        } else {
+          setTarget('');
+          setIsScheduled(false);
+          alert('Scan scheduled successfully!');
+        }
       } else {
-        setTarget('');
+        const res = await fetch('/api/scans', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ toolName: selectedTool, target: target.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || 'Failed to launch scan');
+        } else {
+          setTarget('');
+        }
+        await fetchScans();
       }
-      await fetchScans();
     } catch {
       setError('Network error');
     }
@@ -229,36 +247,52 @@ export default function ScansPage() {
             </div>
           )}
 
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2 mt-3">
+            <input type="checkbox" id="schedule-toggle" checked={isScheduled} onChange={e => setIsScheduled(e.target.checked)} className="rounded border-border bg-bg-input text-accent-cyan" />
+            <label htmlFor="schedule-toggle" className="text-sm font-medium">Schedule Recurring</label>
+          </div>
+          
+          {isScheduled && (
+            <div className="mt-2 p-3 bg-bg-card-hover rounded-lg border border-border">
+              <label className="label-mono block mb-1">Cron Expression</label>
+              <input value={cronSchedule} onChange={e => setCronSchedule(e.target.value)}
+                placeholder="e.g. 0 0 * * *"
+                className="input-field w-full text-sm"
+              />
+              <p className="text-text-muted text-[10px] mt-1" style={{ fontFamily: 'var(--font-mono)' }}>
+                Standard cron format (e.g., 0 0 * * * for daily at midnight).
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-2">
             <button onClick={launchScan}
-              disabled={!canLaunch || launching || !target.trim() || !selectedTool || !currentTool?.available}
+              disabled={!canLaunch || launching || !target.trim() || !selectedTool || (!currentTool?.available && !isScheduled)}
               className="btn-primary flex-1 text-sm">
-              {launching ? '⟳ Queuing...' : '⚡ Launch Single Scan'}
+              {launching ? '⟳ Queuing...' : isScheduled ? '⏰ Schedule Scan' : '⚡ Launch Single Scan'}
             </button>
-            <button onClick={async () => {
-                if (!target.trim()) return;
-                setError('');
-                setLaunching(true);
-                const workflowTools = ['subfinder', 'whatweb', 'nmap', 'nuclei'];
-                // We shouldn't filter by `available` here because we want to enqueue the jobs
-                // into the database regardless. If the worker doesn't have the tool, the worker
-                // will fail the job. But if the worker DOES have it, it will pick it up.
-                // We will only check if the API is reachable.
-                try {
-                  await Promise.all(workflowTools.map(t => fetch('/api/scans', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ toolName: t, target: target.trim() }),
-                  })));
-                  setTarget('');
-                  await fetchScans();
-                } catch { setError('Network error'); }
-                setLaunching(false);
-              }}
-              disabled={!canLaunch || launching || !target.trim()}
-              className="btn-outline flex-1 text-sm bg-accent-cyan/10 border-accent-cyan/50 text-accent-cyan hover:bg-accent-cyan/20">
-              {launching ? '⟳ Orchestrating...' : '🚀 Full Recon Workflow'}
-            </button>
+            {!isScheduled && (
+              <button onClick={async () => {
+                  if (!target.trim()) return;
+                  setError('');
+                  setLaunching(true);
+                  const workflowTools = ['subfinder', 'whatweb', 'nmap', 'nuclei'];
+                  try {
+                    await Promise.all(workflowTools.map(t => fetch('/api/scans', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ toolName: t, target: target.trim() }),
+                    })));
+                    setTarget('');
+                    await fetchScans();
+                  } catch { setError('Network error'); }
+                  setLaunching(false);
+                }}
+                disabled={!canLaunch || launching || !target.trim()}
+                className="btn-outline flex-1 text-sm bg-accent-cyan/10 border-accent-cyan/50 text-accent-cyan hover:bg-accent-cyan/20">
+                {launching ? '⟳ Orchestrating...' : '🚀 Full Recon Workflow'}
+              </button>
+            )}
           </div>
           {!canLaunch && <p className="text-accent-red text-xs text-center">Viewer role cannot launch scans</p>}
         </div>
@@ -313,10 +347,16 @@ export default function ScansPage() {
                       </span>
                     )}
                   </div>
-                  <button onClick={() => setExpanded(expanded === s.id ? null : s.id)}
-                    className="btn-outline text-xs w-full">
-                    {expanded === s.id ? 'Hide Results ▲' : 'View Results ▼'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button onClick={() => setExpanded(expanded === s.id ? null : s.id)}
+                      className="btn-outline text-xs flex-1">
+                      {expanded === s.id ? 'Hide Results ▲' : 'Preview Results ▼'}
+                    </button>
+                    <a href={`/dashboard/scans/${s.id}/report`} target="_blank" rel="noopener noreferrer"
+                      className="btn-primary text-xs flex-1 text-center flex items-center justify-center">
+                      📄 View Full Report
+                    </a>
+                  </div>
                   {expanded === s.id && s.results && (
                     <div className="mt-3">
                       {typeof s.results === 'string' ? (

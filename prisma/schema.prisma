@@ -17,6 +17,10 @@ model Organization {
   scans           Scan[]
   threatFeeds     ThreatFeedEntry[]
   auditLogs       AuditLog[]
+  scheduledScans  ScheduledScan[]
+  assets          Asset[]
+  apiKeys         ApiKey[]
+  integrations    Integration[]
 }
 
 model User {
@@ -129,4 +133,53 @@ model IncidentComment {
   userId     String
   user       User     @relation(fields: [userId], references: [id])
   createdAt  DateTime @default(now())
+}
+
+model ScheduledScan {
+  id             String       @id @default(uuid())
+  toolName       String
+  target         String
+  cronSchedule   String
+  nextRunAt      DateTime
+  createdBy      String?
+  createdAt      DateTime     @default(now())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+}
+
+model Asset {
+  id             String       @id @default(uuid())
+  name           String
+  ipAddress      String?
+  fqdn           String?
+  type           String       @default("ENDPOINT") // ENDPOINT, SERVER, NETWORK, CLOUD
+  status         String       @default("ACTIVE")
+  tags           String[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+}
+
+model ApiKey {
+  id             String       @id @default(uuid())
+  name           String
+  keyHash        String       @unique
+  prefix         String       // e.g., 'pk_abcd' to identify key without storing it
+  lastUsedAt     DateTime?
+  createdBy      String
+  createdAt      DateTime     @default(now())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+}
+
+model Integration {
+  id             String       @id @default(uuid())
+  name           String
+  type           String       // SLACK, DISCORD, PAGERDUTY, WEBHOOK
+  endpoint       String
+  events         String[]     // 'SCAN_COMPLETED', 'SCAN_FAILED', 'INCIDENT_CREATED', etc.
+  createdAt      DateTime     @default(now())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
 }
