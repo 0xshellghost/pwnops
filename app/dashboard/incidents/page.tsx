@@ -33,7 +33,7 @@ export default function IncidentsPage() {
     if (res.ok) { const d = await res.json(); setIncidents(d.incidents || []); }
   }, []);
 
-  useEffect(() => { fetchIncidents(); }, [fetchIncidents]);
+  useEffect(() => { void fetchIncidents(); }, [fetchIncidents]);
   useEffect(() => {
     let iv: ReturnType<typeof setInterval> | null = null;
 

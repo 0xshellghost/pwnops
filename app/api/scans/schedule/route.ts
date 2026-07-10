@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     try {
       const interval = CronExpressionParser.parse(cronSchedule);
       nextRunAt = interval.next().toDate();
-    } catch (err) {
+    } catch (_err) {
       return NextResponse.json({ error: 'Invalid cron expression' }, { status: 400 });
     }
 

@@ -14,11 +14,11 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Initial check (in case we load while offline)
     if (typeof window !== 'undefined' && !navigator.onLine) {
-      setIsOffline(true);
+      void setIsOffline(true);
     }
 
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
+    const handleOnline = () => void setIsOffline(false);
+    const handleOffline = () => void setIsOffline(true);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);

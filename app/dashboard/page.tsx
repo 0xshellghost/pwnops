@@ -57,14 +57,14 @@ export default function DashboardHome() {
   async function simulateThreat() {
     try {
       await fetch('/api/simulate-threat', { method: 'POST' });
-      await loadData();
+      await void loadData();
     } catch (err) {
       console.error(err);
     }
   }
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, []);
 
   if (!data) return (

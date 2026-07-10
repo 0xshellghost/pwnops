@@ -17,7 +17,7 @@ export default function VulnerabilitiesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
+    void setLoading(true);
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (severityFilter !== 'all') params.set('severity', severityFilter);

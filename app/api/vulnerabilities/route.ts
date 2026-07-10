@@ -18,12 +18,12 @@ export async function GET(request: Request) {
   const page = parseInt(url.searchParams.get('page') || '1', 10);
   const limit = parseInt(url.searchParams.get('limit') || '50', 10);
 
-  let vulnsResult = await getVulnerabilities(user.organizationId, page, limit);
+  const vulnsResult = await getVulnerabilities(user.organizationId, page, limit);
   let vulns = vulnsResult.data;
 
-  if (severity && severity !== 'all') vulns = vulns.filter((v: any) => v.severity === severity);
-  if (status && status !== 'all') vulns = vulns.filter((v: any) => v.status === status);
-  if (search) vulns = vulns.filter((v: any) =>
+  if (severity && severity !== 'all') vulns = vulns.filter((v: unknown) => v.severity === severity);
+  if (status && status !== 'all') vulns = vulns.filter((v: unknown) => v.status === status);
+  if (search) vulns = vulns.filter((v: unknown) =>
     v.cveId.toLowerCase().includes(search) ||
     v.title.toLowerCase().includes(search) ||
     v.affectedAsset.toLowerCase().includes(search)

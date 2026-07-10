@@ -5,7 +5,7 @@ import { useAuth } from '@/components/AuthProvider';
 
 interface Scan {
   id: string; toolName: string; target: string; status: string;
-  progress: number; startedAt: string; completedAt: string | null; results: any | null;
+  progress: number; startedAt: string; completedAt: string | null; results: Record<string, unknown> | string | null;
 }
 
 interface ToolInfo {
@@ -67,7 +67,7 @@ export default function ScansPage() {
     setToolsLoaded(true);
   }, [selectedTool]);
 
-  useEffect(() => { fetchScans(); fetchTools(); }, [fetchScans, fetchTools]);
+  useEffect(() => { void fetchScans(); void fetchTools(); }, [fetchScans, fetchTools]);
 
   // WebSocket for real-time updates
   useEffect(() => {
@@ -100,7 +100,7 @@ export default function ScansPage() {
                 return s;
               }));
             }
-          } catch (e) { /* ignore parse error */ }
+          } catch (_e) { /* ignore parse error */ }
         };
         
         ws.onclose = () => {

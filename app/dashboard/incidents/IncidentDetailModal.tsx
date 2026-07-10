@@ -10,7 +10,7 @@ export default function IncidentDetailModal({
   onUpdate,
   onDelete,
 }: {
-  incident: any;
+  incident: Record<string, unknown>;
   onClose: () => void;
   onUpdate: () => void;
   onDelete: (id: string) => void;
@@ -29,10 +29,6 @@ export default function IncidentDetailModal({
 
   useEscapeKey(onClose);
 
-  useEffect(() => {
-    fetchComments();
-  }, [incident.id]);
-
   const fetchComments = async () => {
     const res = await fetch(`/api/incidents/${incident.id}/comments`);
     if (res.ok) {
@@ -40,6 +36,11 @@ export default function IncidentDetailModal({
       setComments(data.comments || []);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchComments();
+  }, [incident.id]);
 
   const handleUpdate = async () => {
     setLoading(true);

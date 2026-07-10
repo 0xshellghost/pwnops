@@ -26,7 +26,7 @@ export default function IntegrationsPage() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchIntegrations(); }, [fetchIntegrations]);
+  useEffect(() => { void fetchIntegrations(); }, [fetchIntegrations]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();

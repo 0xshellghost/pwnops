@@ -32,7 +32,7 @@ export default function AssetsPage() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchAssets(page); }, [page, fetchAssets]);
+  useEffect(() => { void fetchAssets(page); }, [page, fetchAssets]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
