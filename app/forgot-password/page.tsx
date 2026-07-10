@@ -66,7 +66,7 @@ export default function ForgotPasswordPage() {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted">
                       <circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 006 0v-1a10 10 0 10-3.92 7.94"/>
                     </svg>
-                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="operator@pwnops.sec" className="input-field" required/>
+                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="operator@pwnops.sec" className="input-field pl-10!" required/>
                   </div>
                 </div>
 

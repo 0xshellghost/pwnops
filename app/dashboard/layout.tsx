@@ -87,7 +87,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* ── Top Bar ──────────────────────────────────── */}
-      <header className="sticky top-0 z-50 bg-bg-primary/90 backdrop-blur-md border-b border-border px-4 py-3">
+      <header className="sticky top-0 z-50 top-bar-physical px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between w-full">
           <div className="flex items-center gap-2">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-accent-cyan">
