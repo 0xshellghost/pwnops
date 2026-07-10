@@ -4,19 +4,32 @@
 // ──────────────────────────────────────────────────────────
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
 
 // Import the centralized secret — single source of truth
 import { jwtSecret, COOKIE_NAME } from '@/lib/auth';
 
-// ── Rate Limiting (in-memory, per-IP) ───────────────────
-// NOTE: In-memory rate limiting is per-instance only.
-// For true production rate limiting on serverless, use Redis/Upstash.
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_WINDOW = 60_000; // 1 minute
-const RATE_LIMIT_AUTH = 10;       // 10 auth attempts per window
-const RATE_LIMIT_API = 120;       // 120 API calls per window
+// ── Rate Limiting (Upstash Redis with in-memory fallback) ──
+let ratelimitAuth: Ratelimit | null = null;
+let ratelimitApi: Ratelimit | null = null;
 
-function isRateLimited(ip: string, limit: number): boolean {
+if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  const redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  });
+  ratelimitAuth = new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10, '1 m'), analytics: true });
+  ratelimitApi = new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(120, '1 m'), analytics: true });
+}
+
+// In-memory fallback
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW = 60_000;
+const RATE_LIMIT_AUTH = 10;
+const RATE_LIMIT_API = 120;
+
+function isRateLimitedInMemory(ip: string, limit: number): boolean {
   const now = Date.now();
   const entry = rateLimitMap.get(ip);
 
@@ -29,11 +42,8 @@ function isRateLimited(ip: string, limit: number): boolean {
   return entry.count > limit;
 }
 
-// Note: Vercel serverless environments should ideally use @upstash/ratelimit 
-// since memory is not shared across regions or instances.
-// This in-memory implementation uses a probabilistic cleanup to avoid Edge runtime intervals.
 function runProbabilisticCleanup() {
-  if (Math.random() < 0.05) { // 5% chance on each request
+  if (Math.random() < 0.05) {
     const now = Date.now();
     for (const [key, val] of rateLimitMap) {
       if (now > val.resetAt) rateLimitMap.delete(key);
@@ -43,79 +53,96 @@ function runProbabilisticCleanup() {
 
 // ── Security Headers ────────────────────────────────────
 function addSecurityHeaders(response: NextResponse): NextResponse {
-  // Prevent MIME sniffing
   response.headers.set('X-Content-Type-Options', 'nosniff');
-  // Clickjacking protection
   response.headers.set('X-Frame-Options', 'DENY');
-  // XSS filter
   response.headers.set('X-XSS-Protection', '1; mode=block');
-  // Referrer policy
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  // Content Security Policy
+  
+  // CSP: Added ws: and wss: to connect-src to allow real-time worker updates
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none';"
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' ws: wss:; frame-ancestors 'none';"
   );
-  // Strict Transport Security (only in production)
+  
   if (process.env.NODE_ENV === 'production') {
-    response.headers.set(
-      'Strict-Transport-Security',
-      'max-age=63072000; includeSubDomains; preload'
-    );
+    response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   }
-  // Permissions Policy — restrict powerful features
-  response.headers.set(
-    'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), interest-cohort=()'
-  );
+  
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
   return response;
 }
 
 export async function proxy(request: NextRequest) {
-  runProbabilisticCleanup();
+  if (!ratelimitAuth) runProbabilisticCleanup();
+  
   const { pathname } = request.nextUrl;
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-    || request.headers.get('x-real-ip')
-    || 'unknown';
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown';
 
-  // ── Rate limit auth endpoints ─────────────────────────
+  // ── CSRF Protection ────────────────────────────────────
+  // Validate Origin header for state-changing requests
+  if (request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'OPTIONS') {
+    const origin = request.headers.get('origin');
+    const host = request.headers.get('host');
+    const forwardedHost = request.headers.get('x-forwarded-host');
+    const validHost = forwardedHost || host;
+    
+    // Only enforce if origin is present (browsers will send this for POST/PUT/DELETE)
+    if (origin && validHost) {
+      const originUrl = new URL(origin);
+      if (originUrl.host !== validHost) {
+        return addSecurityHeaders(NextResponse.json({ error: 'CSRF token mismatch or invalid origin.' }, { status: 403 }));
+      }
+    }
+  }
+
+  // ── Rate Limiting ──────────────────────────────────────
+  let rateLimited = false;
   if (pathname.startsWith('/api/auth/login') || pathname.startsWith('/api/auth/register')) {
-    if (isRateLimited(`auth:${ip}`, RATE_LIMIT_AUTH)) {
-      return addSecurityHeaders(
-        NextResponse.json(
-          { error: 'Too many requests. Please try again later.' },
-          { status: 429 }
-        )
-      );
+    if (ratelimitAuth) {
+      const { success } = await ratelimitAuth.limit(`auth:${ip}`);
+      rateLimited = !success;
+    } else {
+      rateLimited = isRateLimitedInMemory(`auth:${ip}`, RATE_LIMIT_AUTH);
+    }
+  } else if (pathname.startsWith('/api/')) {
+    if (ratelimitApi) {
+      const { success } = await ratelimitApi.limit(`api:${ip}`);
+      rateLimited = !success;
+    } else {
+      rateLimited = isRateLimitedInMemory(`api:${ip}`, RATE_LIMIT_API);
     }
   }
 
-  // ── Rate limit all API endpoints ──────────────────────
-  if (pathname.startsWith('/api/')) {
-    if (isRateLimited(`api:${ip}`, RATE_LIMIT_API)) {
-      return addSecurityHeaders(
-        NextResponse.json(
-          { error: 'Rate limit exceeded.' },
-          { status: 429 }
-        )
-      );
-    }
+  if (rateLimited) {
+    return addSecurityHeaders(NextResponse.json({ error: 'Rate limit exceeded. Please try again later.' }, { status: 429 }));
   }
 
-  // ── Protect all /dashboard routes ─────────────────────
-  if (pathname.startsWith('/dashboard')) {
+  // ── Route Protection (API & Dashboard) ─────────────────
+  const isDashboardRoute = pathname.startsWith('/dashboard');
+  const isProtectedApiRoute = pathname.startsWith('/api/') && 
+                              !pathname.startsWith('/api/auth/') && 
+                              !pathname.startsWith('/api/seed');
+
+  if (isDashboardRoute || isProtectedApiRoute) {
     const token = request.cookies.get(COOKIE_NAME)?.value;
+    
     if (!token) {
-      return addSecurityHeaders(
-        NextResponse.redirect(new URL('/login', request.url))
-      );
+      if (isProtectedApiRoute) {
+        return addSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
+      }
+      return addSecurityHeaders(NextResponse.redirect(new URL('/login', request.url)));
     }
+    
     try {
       await jwtVerify(token, jwtSecret);
-      const response = NextResponse.next();
-      return addSecurityHeaders(response);
+      // Valid token, proceed
     } catch {
-      // Token invalid or expired — clear and redirect
+      // Token invalid or expired
+      if (isProtectedApiRoute) {
+        const res = NextResponse.json({ error: 'Session expired' }, { status: 401 });
+        res.cookies.delete(COOKIE_NAME);
+        return addSecurityHeaders(res);
+      }
       const response = NextResponse.redirect(new URL('/login', request.url));
       response.cookies.delete(COOKIE_NAME);
       return addSecurityHeaders(response);

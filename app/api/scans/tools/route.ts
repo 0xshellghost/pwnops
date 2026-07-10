@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const user = await getAuthUser(request);
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  let tools: any[] = [];
+  let tools: { name: string; displayName?: string; description: string; available: boolean; binaryPath?: string | null }[] = [];
   const workerUrl = process.env.RENDER_WORKER_URL;
 
   if (workerUrl) {

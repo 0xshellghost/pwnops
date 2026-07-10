@@ -48,6 +48,16 @@ export interface Vulnerability {
   organizationId: string;
 }
 
+export interface ScanResult {
+  summary?: {
+    version?: string;
+    duration?: string;
+    hasDiffAlert?: boolean;
+    [key: string]: string | boolean | number | undefined;
+  };
+  raw?: string;
+}
+
 export interface Scan {
   id: string;
   toolName: string;
@@ -57,8 +67,26 @@ export interface Scan {
   triggeredById: string;
   startedAt: string;
   completedAt: string | null;
-  results: any;
+  results: ScanResult | null;
   organizationId: string;
+}
+
+export interface IncidentComment {
+  id: string;
+  content: string;
+  incidentId: string;
+  userId: string;
+  createdAt: string;
+  user: {
+    name: string;
+    email: string;
+  };
+}
+
+export interface DashboardMetrics {
+  incidents: { total: number; critical: number; recent: Incident[] };
+  scans: { running: number; completed: number; recent: Scan[] };
+  vulns: { total: number; open: number; critical: number; recent: Vulnerability[] };
 }
 
 export interface ThreatFeedEntry {

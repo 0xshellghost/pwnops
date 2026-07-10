@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/store';
 import { notFound } from 'next/navigation';
 import PrintButton from './PrintButton';
+import { ScanResult } from '@/lib/types';
 
 export default async function ScanReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -11,11 +12,11 @@ export default async function ScanReportPage({ params }: { params: Promise<{ id:
 
   if (!scan) return notFound();
 
-  let results: any = null;
+  let results: ScanResult | null = null;
   if (typeof scan.results === 'string') {
     results = { raw: scan.results };
   } else {
-    results = scan.results;
+    results = scan.results as unknown as ScanResult;
   }
 
   return (

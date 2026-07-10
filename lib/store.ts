@@ -149,7 +149,7 @@ export async function addScan(s: Omit<Scan, 'id'>) {
       triggeredById: s.triggeredById,
       startedAt: s.startedAt,
       completedAt: s.completedAt,
-      results: s.results ?? undefined,
+      results: s.results ? (s.results as any) : undefined,
       organizationId: s.organizationId,
     },
   });
@@ -160,7 +160,7 @@ export async function updateScan(id: string, update: Partial<Pick<Scan, 'progres
     const scan = await prisma.scan.findUnique({ where: { id } });
     if (!scan || scan.organizationId !== organizationId) return null;
   }
-  return prisma.scan.update({ where: { id }, data: update });
+  return prisma.scan.update({ where: { id }, data: { ...update, results: update.results ? (update.results as any) : undefined } });
 }
 
 // ── Threat Feed ──────────────────────────────────────────
@@ -189,10 +189,14 @@ export async function seedIfEmpty() {
       const org = await prisma.organization.create({ data: { name: 'PwnOps Default SOC' } });
       const orgId = org.id;
 
-      // Use env-configurable seed passwords; fall back to strong-ish defaults for demo only
-      const seedAdminPw = process.env.SEED_ADMIN_PASSWORD || 'PwnOps!Admin#2026';
-      const seedAnalystPw = process.env.SEED_ANALYST_PASSWORD || 'PwnOps!Analyst#2026';
-      const seedViewerPw = process.env.SEED_VIEWER_PASSWORD || 'PwnOps!Viewer#2026';
+      // Strict check for environment variables — NO fallback hardcoded passwords
+      const seedAdminPw = process.env.SEED_ADMIN_PASSWORD;
+      const seedAnalystPw = process.env.SEED_ANALYST_PASSWORD;
+      const seedViewerPw = process.env.SEED_VIEWER_PASSWORD;
+
+      if (!seedAdminPw || !seedAnalystPw || !seedViewerPw) {
+        throw new Error('Seed passwords must be provided via environment variables (SEED_ADMIN_PASSWORD, SEED_ANALYST_PASSWORD, SEED_VIEWER_PASSWORD)');
+      }
 
       const adminHash = bcrypt.hashSync(seedAdminPw, 12);
       const analystHash = bcrypt.hashSync(seedAnalystPw, 12);

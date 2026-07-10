@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { Incident, IncidentComment } from '@/lib/types';
 
 export default function IncidentDetailModal({
   incident,
@@ -10,7 +11,7 @@ export default function IncidentDetailModal({
   onUpdate,
   onDelete,
 }: {
-  incident: any;
+  incident: Incident;
   onClose: () => void;
   onUpdate: () => void;
   onDelete: (id: string) => void;
@@ -20,7 +21,7 @@ export default function IncidentDetailModal({
   const [title, setTitle] = useState(incident.title);
   const [description, setDescription] = useState(incident.description);
   const [severity, setSeverity] = useState(incident.severity);
-  const [comments, setComments] = useState<any[]>([]);
+  const [comments, setComments] = useState<IncidentComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -96,7 +97,7 @@ export default function IncidentDetailModal({
             </div>
             <div>
               <label className="label-mono block mb-1">Severity</label>
-              <select value={severity} onChange={e => setSeverity(e.target.value)} className="input-field pl-4!">
+              <select value={severity} onChange={e => setSeverity(e.target.value as Incident['severity'])} className="input-field pl-4!">
                 <option value="critical">Critical</option>
                 <option value="high">High</option>
                 <option value="medium">Medium</option>
@@ -134,7 +135,7 @@ export default function IncidentDetailModal({
         <div>
           <h3 className="text-md font-bold mb-4">Timeline & Comments</h3>
           <div className="space-y-4 mb-4">
-            {comments.map((comment: any) => (
+            {comments.map((comment: IncidentComment) => (
               <div key={comment.id} className="bg-bg-input p-3 rounded-lg border border-border">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-xs font-bold text-accent-cyan">{comment.user.name}</span>

@@ -2,11 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-
-interface Scan {
-  id: string; toolName: string; target: string; status: string;
-  progress: number; startedAt: string; completedAt: string | null; results: Record<string, unknown> | string | null;
-}
+import { Scan } from '@/lib/types';
 
 interface ToolInfo {
   name: string;
@@ -368,24 +364,24 @@ export default function ScansPage() {
                         <div className="terminal-output">{s.results}</div>
                       ) : (
                         <div className="space-y-3">
-                          {(s.results as any).summary && (
+                          {s.results.summary && (
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                               <div className="bg-bg-input p-2 rounded border border-border">
                                 <span className="text-text-muted block mb-1">Tool Version</span>
-                                <span className="font-bold">{(s.results as any).summary.version || 'N/A'}</span>
+                                <span className="font-bold">{s.results.summary.version || 'N/A'}</span>
                               </div>
                               <div className="bg-bg-input p-2 rounded border border-border">
                                 <span className="text-text-muted block mb-1">Duration</span>
-                                <span className="font-bold">{(s.results as any).summary.duration || 'N/A'}</span>
+                                <span className="font-bold">{s.results.summary.duration || 'N/A'}</span>
                               </div>
-                              {(s.results as any).summary.hasDiffAlert && (
+                              {s.results.summary.hasDiffAlert && (
                                 <div className="col-span-2 bg-accent-red/10 p-2 rounded border border-accent-red text-accent-red flex items-center justify-center font-bold animate-pulse">
                                   🚨 New Findings Detected
                                 </div>
                               )}
                             </div>
                           )}
-                          <div className="terminal-output">{(s.results as any).raw}</div>
+                          <div className="terminal-output">{s.results.raw}</div>
                         </div>
                       )}
                     </div>

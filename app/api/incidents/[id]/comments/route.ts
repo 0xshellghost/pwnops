@@ -2,7 +2,7 @@ import { getAuthUser } from '@/lib/auth';
 import { addComment, getComments, logAudit } from '@/lib/store';
 import { NextResponse } from 'next/server';
 
-export async function GET(request: Request, context: any) {
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const user = await getAuthUser(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -11,7 +11,7 @@ export async function GET(request: Request, context: any) {
   return NextResponse.json({ comments });
 }
 
-export async function POST(request: Request, context: any) {
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const user = await getAuthUser(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 

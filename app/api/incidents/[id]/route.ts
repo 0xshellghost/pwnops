@@ -2,7 +2,7 @@ import { getAuthUser } from '@/lib/auth';
 import { updateIncident, deleteIncident, logAudit } from '@/lib/store';
 import { NextResponse } from 'next/server';
 
-export async function PUT(request: Request, context: any) {
+export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
   const user = await getAuthUser(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (user.role === 'viewer') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -24,7 +24,7 @@ export async function PUT(request: Request, context: any) {
   return NextResponse.json({ incident });
 }
 
-export async function DELETE(request: Request, context: any) {
+export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
   const user = await getAuthUser(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (user.role !== 'admin') return NextResponse.json({ error: 'Forbidden. Only admins can delete incidents.' }, { status: 403 });

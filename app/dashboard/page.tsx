@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
+import { Vulnerability } from '@/lib/types';
 
 interface DashData {
   incidents: { total: number; active: number; critical: number; high: number; medium: number; low: number };
   scans: { total: number; completed: number; failed: number };
-  vulns: { total: number; open: number; critical: number; recent: any[] };
+  vulns: { total: number; open: number; critical: number; recent: Vulnerability[] };
   threatFeed: { message: string; timestamp: string }[];
 }
 

@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       },
     });
     const emails = await emailsRes.json();
-    const primaryEmail = emails.find((e: any) => e.primary)?.email || emails[0]?.email;
+    const primaryEmail = emails.find((e: { primary: boolean; email: string }) => e.primary)?.email || emails[0]?.email;
 
     if (!primaryEmail) {
       return NextResponse.redirect(new URL('/login?error=no_email', request.url));

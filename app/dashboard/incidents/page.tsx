@@ -3,12 +3,7 @@
 import { useEffect, useState, useCallback, memo } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import IncidentDetailModal from './IncidentDetailModal';
-
-interface Incident {
-  id: string; numericId: number; title: string; description: string;
-  severity: string; status: string; assigneeName: string | null;
-  createdAt: string; mitigationSteps: string[];
-}
+import { Incident } from '@/lib/types';
 
 const COLUMNS = [
   { key: 'new', label: 'New' },
