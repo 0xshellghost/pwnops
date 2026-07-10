@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 interface Asset {
   id: string; name: string; ipAddress: string | null; fqdn: string | null;
@@ -16,6 +17,8 @@ export default function AssetsPage() {
   const [total, setTotal] = useState(0);
 
   const [newAsset, setNewAsset] = useState({ name: '', ipAddress: '', fqdn: '', type: 'ENDPOINT', status: 'ACTIVE', tags: '' });
+
+  useEscapeKey(() => setShowAdd(false), showAdd);
 
   const fetchAssets = useCallback(async (p: number) => {
     setLoading(true);

@@ -37,6 +37,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ─── Accessibility: Global Focus Rings ─────────────────── */
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-bg-primary), 0 0 0 4px var(--color-accent-cyan);
+}
+
 /* ─── Scrollbar ─────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;

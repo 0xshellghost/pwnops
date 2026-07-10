@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 interface Integration {
   id: string; name: string; type: string; endpoint: string; events: string[]; createdAt: string;
@@ -12,6 +13,8 @@ export default function IntegrationsPage() {
   const [showAdd, setShowAdd] = useState(false);
 
   const [newIntegration, setNewIntegration] = useState({ name: '', type: 'SLACK', endpoint: '', events: ['SCAN_FAILED'] });
+
+  useEscapeKey(() => setShowAdd(false), showAdd);
 
   const fetchIntegrations = useCallback(async () => {
     setLoading(true);

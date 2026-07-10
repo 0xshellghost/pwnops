@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, memo } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import IncidentDetailModal from './IncidentDetailModal';
 
@@ -136,37 +136,14 @@ export default function IncidentsPage() {
 
               <div className="space-y-3 min-h-[200px]">
                 {colIncidents.map(inc => (
-                  <div
+                  <KanbanCard 
                     key={inc.id}
-                    draggable={canEdit}
-                    onDragStart={e => { e.dataTransfer.setData('incidentId', inc.id); setDragId(inc.id); }}
-                    onDragEnd={() => setDragId(null)}
-                    onClick={() => setSelectedIncident(inc)}
-                    className={`kanban-card severity-border-${inc.severity} ${dragId === inc.id ? 'dragging' : ''} cursor-pointer`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={`badge badge-${inc.severity}`}>● {inc.severity.toUpperCase()}</span>
-                      <span className="text-text-muted text-xs" style={{ fontFamily: 'var(--font-mono)' }}>
-                        ID: #{inc.numericId}
-                      </span>
-                    </div>
-                    <h4 className="font-bold text-sm mb-2">{inc.title}</h4>
-                    <div className="flex items-center justify-between">
-                      {inc.assigneeName ? (
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-full bg-bg-card-hover border border-border flex items-center justify-center text-xs font-bold text-accent-cyan">
-                            {inc.assigneeName.split(' ').map(w => w[0]).join('')}
-                          </span>
-                          <span className="text-text-muted text-xs">{inc.assigneeName}</span>
-                        </div>
-                      ) : (
-                        <span className="text-text-muted text-xs italic">Unassigned</span>
-                      )}
-                      {inc.mitigationSteps.length > 0 && (
-                        <span className="text-text-muted text-xs">🔗</span>
-                      )}
-                    </div>
-                  </div>
+                    inc={inc}
+                    canEdit={canEdit}
+                    dragId={dragId}
+                    setDragId={setDragId}
+                    setSelectedIncident={setSelectedIncident}
+                  />
                 ))}
               </div>
             </div>
@@ -232,3 +209,50 @@ function CreateModal({ onClose, onCreate }: {
     </div>
   );
 }
+
+const KanbanCard = memo(function KanbanCard({ 
+  inc, 
+  canEdit, 
+  dragId, 
+  setDragId, 
+  setSelectedIncident 
+}: { 
+  inc: Incident; 
+  canEdit: boolean;
+  dragId: string | null;
+  setDragId: (id: string | null) => void;
+  setSelectedIncident: (inc: Incident) => void;
+}) {
+  return (
+    <div
+      draggable={canEdit}
+      onDragStart={e => { e.dataTransfer.setData('incidentId', inc.id); setDragId(inc.id); }}
+      onDragEnd={() => setDragId(null)}
+      onClick={() => setSelectedIncident(inc)}
+      className={`kanban-card severity-border-${inc.severity} ${dragId === inc.id ? 'dragging' : ''} cursor-pointer`}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span className={`badge badge-${inc.severity}`}>● {inc.severity.toUpperCase()}</span>
+        <span className="text-text-muted text-xs" style={{ fontFamily: 'var(--font-mono)' }}>
+          ID: #{inc.numericId}
+        </span>
+      </div>
+      <h4 className="font-bold text-sm mb-2">{inc.title}</h4>
+      <div className="flex items-center justify-between">
+        {inc.assigneeName ? (
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-bg-card-hover border border-border flex items-center justify-center text-xs font-bold text-accent-cyan">
+              {inc.assigneeName.split(' ').map((w: string) => w[0]).join('')}
+            </span>
+            <span className="text-text-muted text-xs">{inc.assigneeName}</span>
+          </div>
+        ) : (
+          <span className="text-text-muted text-xs italic">Unassigned</span>
+        )}
+        {inc.mitigationSteps.length > 0 && (
+          <span className="text-text-muted text-xs">🔗</span>
+        )}
+      </div>
+    </div>
+  );
+});

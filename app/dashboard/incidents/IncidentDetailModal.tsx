@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/AuthProvider';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 export default function IncidentDetailModal({
   incident,
@@ -25,6 +26,8 @@ export default function IncidentDetailModal({
 
   const canEdit = user?.role !== 'viewer';
   const canDelete = user?.role === 'admin';
+
+  useEscapeKey(onClose);
 
   useEffect(() => {
     fetchComments();

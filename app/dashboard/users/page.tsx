@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 interface UserInfo {
   id: string; email: string; name: string; role: string; createdAt: string;
@@ -21,6 +22,8 @@ export default function UsersPage() {
   const [apiKeys, setApiKeys] = useState<{ id: string; name: string; prefix: string; createdAt: string; lastUsedAt: string | null }[]>([]);
   const [newKeyName, setNewKeyName] = useState('');
   const [rawKey, setRawKey] = useState('');
+
+  useEscapeKey(() => setShowAddModal(false), showAddModal);
 
   const fetchUsers = async () => {
     const res = await fetch('/api/users');
@@ -302,6 +305,8 @@ function TwoFactorModal({ onClose }: { onClose: () => void }) {
   const [enabled, setEnabled] = useState(false);
   const [token, setToken] = useState('');
   const [error, setError] = useState('');
+
+  useEscapeKey(onClose, true);
 
   useEffect(() => {
     fetch('/api/auth/2fa/setup')
