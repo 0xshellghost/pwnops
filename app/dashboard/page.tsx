@@ -37,8 +37,18 @@ export default function DashboardHome() {
     setIsRefreshing(true);
     try {
       const res = await fetch('/api/dashboard/metrics');
+      if (!res.ok) throw new Error('API failed');
       const json = await res.json();
       if (!json.error) setData(json);
+    } catch (err) {
+      console.error('Failed to load dashboard metrics:', err);
+      // Fallback empty data so the UI doesn't hang in skeleton mode forever
+      setData({
+        incidents: { total: 0, active: 0, critical: 0, high: 0, medium: 0, low: 0 },
+        scans: { total: 0, completed: 0, failed: 0 },
+        vulns: { total: 0, open: 0, critical: 0, recent: [] },
+        threatFeed: []
+      });
     } finally {
       setIsRefreshing(false);
     }

@@ -8,31 +8,23 @@ export async function GET(request: Request) {
 
   const orgId = user.organizationId;
 
-  const [
-    totalIncidents, activeIncidents, criticalIncidents,
-    highIncidents, medIncidents, lowIncidents,
-    totalScans, completedScans, failedScans,
-    totalVulns, openVulns, criticalVulns,
-    recentVulns, threatFeed
-  ] = await Promise.all([
-    prisma.incident.count({ where: { organizationId: orgId } }),
-    prisma.incident.count({ where: { organizationId: orgId, status: { not: 'resolved' } } }),
-    prisma.incident.count({ where: { organizationId: orgId, severity: 'critical', status: { not: 'resolved' } } }),
-    prisma.incident.count({ where: { organizationId: orgId, severity: 'high', status: { not: 'resolved' } } }),
-    prisma.incident.count({ where: { organizationId: orgId, severity: 'medium', status: { not: 'resolved' } } }),
-    prisma.incident.count({ where: { organizationId: orgId, severity: 'low', status: { not: 'resolved' } } }),
-    
-    prisma.scan.count({ where: { organizationId: orgId } }),
-    prisma.scan.count({ where: { organizationId: orgId, status: 'completed' } }),
-    prisma.scan.count({ where: { organizationId: orgId, status: 'failed' } }),
-    
-    prisma.vulnerability.count({ where: { organizationId: orgId } }),
-    prisma.vulnerability.count({ where: { organizationId: orgId, status: 'open' } }),
-    prisma.vulnerability.count({ where: { organizationId: orgId, severity: 'critical' } }),
-    
-    prisma.vulnerability.findMany({ where: { organizationId: orgId }, orderBy: { discoveredAt: 'desc' }, take: 4 }),
-    prisma.threatFeedEntry.findMany({ where: { organizationId: orgId }, orderBy: { timestamp: 'desc' }, take: 5 })
-  ]);
+  const totalIncidents = await prisma.incident.count({ where: { organizationId: orgId } });
+  const activeIncidents = await prisma.incident.count({ where: { organizationId: orgId, status: { not: 'resolved' } } });
+  const criticalIncidents = await prisma.incident.count({ where: { organizationId: orgId, severity: 'critical', status: { not: 'resolved' } } });
+  const highIncidents = await prisma.incident.count({ where: { organizationId: orgId, severity: 'high', status: { not: 'resolved' } } });
+  const medIncidents = await prisma.incident.count({ where: { organizationId: orgId, severity: 'medium', status: { not: 'resolved' } } });
+  const lowIncidents = await prisma.incident.count({ where: { organizationId: orgId, severity: 'low', status: { not: 'resolved' } } });
+  
+  const totalScans = await prisma.scan.count({ where: { organizationId: orgId } });
+  const completedScans = await prisma.scan.count({ where: { organizationId: orgId, status: 'completed' } });
+  const failedScans = await prisma.scan.count({ where: { organizationId: orgId, status: 'failed' } });
+  
+  const totalVulns = await prisma.vulnerability.count({ where: { organizationId: orgId } });
+  const openVulns = await prisma.vulnerability.count({ where: { organizationId: orgId, status: 'open' } });
+  const criticalVulns = await prisma.vulnerability.count({ where: { organizationId: orgId, severity: 'critical' } });
+  
+  const recentVulns = await prisma.vulnerability.findMany({ where: { organizationId: orgId }, orderBy: { discoveredAt: 'desc' }, take: 4 });
+  const threatFeed = await prisma.threatFeedEntry.findMany({ where: { organizationId: orgId }, orderBy: { timestamp: 'desc' }, take: 5 });
 
   return NextResponse.json({
     incidents: {

@@ -91,7 +91,7 @@ export default function VulnerabilitiesPage() {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search CVE, Asset, or ID"
-          className="input-field text-sm"
+          className="input-field pl-10! text-sm"
         />
       </div>
 
