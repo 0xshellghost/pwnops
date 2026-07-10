@@ -11,7 +11,7 @@ export default async function ScanReportPage({ params }: { params: Promise<{ id:
 
   if (!scan) return notFound();
 
-  let results: Record<string, unknown> | string = null;
+  let results: any = null;
   if (typeof scan.results === 'string') {
     results = { raw: scan.results };
   } else {

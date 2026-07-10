@@ -362,7 +362,7 @@ function TwoFactorModal({ onClose }: { onClose: () => void }) {
           <div className="space-y-4">
             <p className="text-text-secondary text-sm">Scan this QR code with your authenticator app (like Google Authenticator or Authy).</p>
             <div className="flex justify-center bg-white p-4 rounded-lg">
-              {qrCodeUrl && <img alt="avatar" src={qrCodeUrl} alt="2FA QR Code" />}
+              {qrCodeUrl && <img src={qrCodeUrl} alt="2FA QR Code" />}
             </div>
             <div className="text-center">
               <span className="text-text-muted text-xs label-mono">{secret}</span>

@@ -3,6 +3,7 @@
 // ──────────────────────────────────────────────────────────
 import { getAuthUser } from '@/lib/auth';
 import { getVulnerabilities, updateVulnStatus } from '@/lib/store';
+import { Vulnerability } from '@/lib/types';
 
 const VALID_VULN_STATUSES = ['open', 'in_progress', 'fixed'] as const;
 
@@ -21,9 +22,9 @@ export async function GET(request: Request) {
   const vulnsResult = await getVulnerabilities(user.organizationId, page, limit);
   let vulns = vulnsResult.data;
 
-  if (severity && severity !== 'all') vulns = vulns.filter((v: unknown) => v.severity === severity);
-  if (status && status !== 'all') vulns = vulns.filter((v: unknown) => v.status === status);
-  if (search) vulns = vulns.filter((v: unknown) =>
+  if (severity && severity !== 'all') vulns = vulns.filter((v: any) => v.severity === severity);
+  if (status && status !== 'all') vulns = vulns.filter((v: any) => v.status === status);
+  if (search) vulns = vulns.filter((v: any) =>
     v.cveId.toLowerCase().includes(search) ||
     v.title.toLowerCase().includes(search) ||
     v.affectedAsset.toLowerCase().includes(search)

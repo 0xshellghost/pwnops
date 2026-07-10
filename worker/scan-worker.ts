@@ -218,7 +218,7 @@ async function processScan(scan: {
     let prevRaw = '';
     if (prevScan?.results) {
        const pr = prevScan.results as { raw?: string } | string | null;
-       prevRaw = typeof pr === 'string' ? pr : (pr.raw || '');
+       prevRaw = typeof pr === 'string' ? pr : (pr?.raw || '');
     }
 
     const diffAlert = (prevScan && result.success) 

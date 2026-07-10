@@ -57,7 +57,7 @@ export interface Scan {
   triggeredById: string;
   startedAt: string;
   completedAt: string | null;
-  results: unknown;
+  results: any;
   organizationId: string;
 }
 

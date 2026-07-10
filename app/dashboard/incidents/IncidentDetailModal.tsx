@@ -10,7 +10,7 @@ export default function IncidentDetailModal({
   onUpdate,
   onDelete,
 }: {
-  incident: Record<string, unknown>;
+  incident: any;
   onClose: () => void;
   onUpdate: () => void;
   onDelete: (id: string) => void;
@@ -38,8 +38,8 @@ export default function IncidentDetailModal({
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     fetchComments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incident.id]);
 
   const handleUpdate = async () => {
