@@ -67,13 +67,14 @@ export default function IntegrationsPage() {
       </div>
 
       <div className="card-glass p-0 overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="bg-bg-card-hover border-b border-border">
             <tr>
               <th className="p-4 font-semibold text-text-muted">NAME</th>
               <th className="p-4 font-semibold text-text-muted">TYPE</th>
-              <th className="p-4 font-semibold text-text-muted">ENDPOINT</th>
-              <th className="p-4 font-semibold text-text-muted">EVENTS</th>
+              <th className="p-4 font-semibold text-text-muted hidden sm:table-cell">ENDPOINT</th>
+              <th className="p-4 font-semibold text-text-muted hidden lg:table-cell">EVENTS</th>
               <th className="p-4 font-semibold text-text-muted text-right">ACTIONS</th>
             </tr>
           </thead>
@@ -89,9 +90,11 @@ export default function IntegrationsPage() {
                   <td className="p-4">
                     <span className="badge badge-info">{a.type}</span>
                   </td>
-                  <td className="p-4 font-mono text-xs text-text-secondary max-w-[200px] truncate">{a.endpoint}</td>
-                  <td className="p-4 flex gap-1 flex-wrap">
-                    {a.events.map(e => <span key={e} className="badge bg-bg-input border border-border text-[10px]">{e}</span>)}
+                  <td className="p-4 font-mono text-xs text-text-secondary max-w-[200px] truncate hidden sm:table-cell">{a.endpoint}</td>
+                  <td className="p-4 hidden lg:table-cell">
+                    <div className="flex gap-1 flex-wrap">
+                      {a.events.map(e => <span key={e} className="badge bg-bg-input border border-border text-[10px]">{e}</span>)}
+                    </div>
                   </td>
                   <td className="p-4 text-right">
                     <button onClick={() => handleDelete(a.id)} className="text-accent-red hover:underline text-xs">Delete</button>
@@ -101,6 +104,7 @@ export default function IntegrationsPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {showAdd && (

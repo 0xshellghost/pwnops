@@ -228,19 +228,6 @@ export default function DashboardHome() {
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="text-center mt-10 pt-6 border-t border-border/50">
-        <p className="text-text-muted text-xs tracking-wider" style={{ fontFamily: 'var(--font-mono)' }}>
-          © {new Date().getFullYear()} PWNOPS SEC OPS. ENCRYPTED CONNECTION.
-        </p>
-        <div className="flex justify-center gap-6 mt-4 text-text-muted text-xs">
-          <span>Documentation</span>
-          <span>API Reference</span>
-          <span>Support</span>
-          <span>System Status</span>
-        </div>
-      </footer>
     </div>
   );
 }

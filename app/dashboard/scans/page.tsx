@@ -212,7 +212,7 @@ export default function ScansPage() {
         <div className="space-y-3">
           <div>
             <label className="label-mono block mb-1">Select Tool</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
               {tools.map(t => (
                 <button key={t.name} onClick={() => { if (t.available) setSelectedTool(t.name); }}
                   disabled={!t.available}
@@ -361,10 +361,6 @@ export default function ScansPage() {
                       className="btn-outline text-xs flex-1">
                       {expanded === s.id ? 'Hide Results ▲' : 'Preview Results ▼'}
                     </button>
-                    <a href={`/dashboard/scans/${s.id}/report`} target="_blank" rel="noopener noreferrer"
-                      className="btn-primary text-xs flex-1 text-center flex items-center justify-center">
-                      📄 View Full Report
-                    </a>
                   </div>
                   {expanded === s.id && s.results && (
                     <div className="mt-3">

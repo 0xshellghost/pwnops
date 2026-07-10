@@ -112,8 +112,8 @@ export default function IncidentsPage() {
         )}
       </div>
 
-      {/* Kanban Board - horizontal scroll */}
-      <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4" style={{ scrollSnapType: 'x mandatory' }}>
+      {/* Kanban Board - 4-column grid on desktop, horizontal scroll on mobile */}
+      <div className="kanban-desktop flex lg:grid gap-4 overflow-x-auto lg:overflow-x-visible pb-4 -mx-4 px-4 lg:mx-0 lg:px-0" style={{ scrollSnapType: 'x mandatory' }}>
         {COLUMNS.map(col => {
           const colIncidents = filtered.filter(i => i.status === col.key);
           return (

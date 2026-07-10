@@ -71,6 +71,7 @@ export default function AssetsPage() {
       </div>
 
       <div className="card-glass p-0 overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="bg-bg-card-hover border-b border-border">
             <tr>
@@ -78,7 +79,7 @@ export default function AssetsPage() {
               <th className="p-4 font-semibold text-text-muted">TARGET</th>
               <th className="p-4 font-semibold text-text-muted">TYPE</th>
               <th className="p-4 font-semibold text-text-muted">STATUS</th>
-              <th className="p-4 font-semibold text-text-muted">TAGS</th>
+              <th className="p-4 font-semibold text-text-muted hidden lg:table-cell">TAGS</th>
               <th className="p-4 font-semibold text-text-muted text-right">ACTIONS</th>
             </tr>
           </thead>
@@ -96,10 +97,12 @@ export default function AssetsPage() {
                     <span className="badge badge-info">{a.type}</span>
                   </td>
                   <td className="p-4">
-                    <span className={`badge ${a.status === 'ACTIVE' ? 'badge-success' : 'badge-warning'}`}>{a.status}</span>
+                    <span className={`badge ${a.status === 'ACTIVE' ? 'badge-success' : a.status === 'INACTIVE' ? 'badge-warning' : 'badge-info'}`}>{a.status}</span>
                   </td>
-                  <td className="p-4 flex gap-1 flex-wrap">
-                    {a.tags.map(t => <span key={t} className="badge bg-bg-input border border-border">{t}</span>)}
+                  <td className="p-4 hidden lg:table-cell">
+                    <div className="flex gap-1 flex-wrap">
+                      {a.tags.map(t => <span key={t} className="badge bg-bg-input border border-border">{t}</span>)}
+                    </div>
                   </td>
                   <td className="p-4 text-right">
                     <button onClick={() => handleDelete(a.id)} className="text-accent-red hover:underline text-xs">Delete</button>
@@ -109,6 +112,7 @@ export default function AssetsPage() {
             )}
           </tbody>
         </table>
+        </div>
 
         {totalPages > 1 && (
           <div className="p-4 border-t border-border flex justify-between items-center bg-bg-card-hover/30">

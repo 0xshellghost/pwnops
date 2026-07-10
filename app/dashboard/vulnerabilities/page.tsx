@@ -112,7 +112,7 @@ export default function VulnerabilitiesPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-3 mb-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <div className="stat-card" style={{ borderLeft: '3px solid var(--color-accent-red)' }}>
           <div className="label-mono mb-1">Critical</div>
           <div className="text-2xl font-bold">{counts.critical}</div>
@@ -131,40 +131,69 @@ export default function VulnerabilitiesPage() {
         </div>
       </div>
 
-      {/* Vuln Cards */}
+      {/* Vuln Table (Desktop) / Cards (Mobile) */}
       {loading ? (
         <div className="space-y-3">
           {[1,2,3].map(i => <div key={i} className="h-32 bg-bg-card rounded-xl animate-pulse" />)}
         </div>
       ) : (
-        <div className="space-y-3 stagger">
-          {paginated.map(v => (
-            <div key={v.id} className="card-glass p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-accent-cyan text-sm font-bold" style={{ fontFamily: 'var(--font-mono)' }}>{v.cveId}</span>
-                <span className="text-text-muted text-xs" style={{ fontFamily: 'var(--font-mono)' }}>{v.version}</span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-auto text-text-muted">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
-              </div>
-              <h3 className="font-bold text-sm mb-1">{v.title}</h3>
-              <p className="text-text-muted text-xs mb-3 line-clamp-2">{v.description}</p>
+        <>
+          {/* Desktop Table */}
+          <div className="hidden lg:block card-glass p-0 overflow-hidden">
+            <table className="data-table w-full">
+              <thead>
+                <tr>
+                  <th>CVE ID</th>
+                  <th>Title</th>
+                  <th>Asset</th>
+                  <th>Severity</th>
+                  <th>CVSS</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody className="stagger">
+                {paginated.map(v => (
+                  <tr key={v.id} className={`severity-border-${v.severity}`}>
+                    <td className="text-accent-cyan" style={{ fontFamily: 'var(--font-mono)' }}>{v.cveId}</td>
+                    <td>
+                      <div className="font-bold text-sm">{v.title}</div>
+                      <div className="text-text-muted text-xs line-clamp-1 max-w-xs">{v.description}</div>
+                    </td>
+                    <td style={{ fontFamily: 'var(--font-mono)' }} className="text-xs">{v.affectedAsset}</td>
+                    <td><span className={`badge badge-${v.severity}`}>● {v.severity.toUpperCase()}</span></td>
+                    <td className="font-bold">{v.cvssScore}</td>
+                    <td><span className={`badge ${statusBadge(v.status)}`}>◉ {statusLabel(v.status)}</span></td>
+                  </tr>
+                ))}
+                {paginated.length === 0 && (
+                  <tr><td colSpan={6} className="text-center text-text-muted py-8">No vulnerabilities found.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`badge badge-${v.severity}`}>● {v.severity.toUpperCase()} ({v.cvssScore})</span>
+          {/* Mobile Cards */}
+          <div className="lg:hidden space-y-3 stagger">
+            {paginated.map(v => (
+              <div key={v.id} className={`card-glass p-4 severity-border-${v.severity}`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-accent-cyan text-sm font-bold" style={{ fontFamily: 'var(--font-mono)' }}>{v.cveId}</span>
+                  <span className="text-text-muted text-xs" style={{ fontFamily: 'var(--font-mono)' }}>{v.version}</span>
+                </div>
+                <h3 className="font-bold text-sm mb-1">{v.title}</h3>
+                <p className="text-text-muted text-xs mb-3 line-clamp-2">{v.description}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`badge badge-${v.severity}`}>● {v.severity.toUpperCase()} ({v.cvssScore})</span>
+                  <span className={`badge ${statusBadge(v.status)}`}>◉ {statusLabel(v.status)}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-2 text-xs text-text-muted" style={{ fontFamily: 'var(--font-mono)' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                  {v.affectedAsset}
+                </div>
               </div>
-              <div className="flex items-center gap-2 mt-2 text-xs text-text-muted" style={{ fontFamily: 'var(--font-mono)' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-                {v.affectedAsset}
-              </div>
-              <div className="mt-2">
-                <span className={`badge ${statusBadge(v.status)}`}>
-                  ◉ {statusLabel(v.status)}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Pagination */}
