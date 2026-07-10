@@ -14,6 +14,7 @@ import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { executeScan, getAvailableTools, validateTarget, validateToolName } from '../lib/scan-engine';
 import { createServer } from 'http';
+import { WebSocketServer, WebSocket } from 'ws';
 
 // ── Configuration ────────────────────────────────────────
 const POLL_INTERVAL_MS = Number(process.env.WORKER_POLL_INTERVAL) || 3000;
@@ -35,6 +36,18 @@ const prisma = new PrismaClient({ adapter });
 let activeScanCount = 0;
 let isShuttingDown = false;
 let totalProcessed = 0;
+
+let wss: WebSocketServer | null = null;
+
+function broadcastScanUpdate(scanId: string, status: string, progress: number, results: any) {
+  if (!wss) return;
+  const msg = JSON.stringify({ type: 'SCAN_UPDATE', scanId, status, progress, results });
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(msg);
+    }
+  });
+}
 
 // ── Main Loop ────────────────────────────────────────────
 
@@ -67,6 +80,8 @@ async function pollForScans() {
     });
 
     if (!scan) return; // No work to do
+
+    broadcastScanUpdate(scan.id, 'running', 5, `[*] Claimed by ${WORKER_ID}`);
 
     // Process the scan asynchronously
     activeScanCount++;
@@ -102,6 +117,7 @@ async function processScan(scan: {
           completedAt: new Date(),
         },
       });
+      broadcastScanUpdate(id, 'failed', 100, `[!] Unknown or unavailable tool: ${toolName}`);
       return;
     }
 
@@ -115,6 +131,7 @@ async function processScan(scan: {
           completedAt: new Date(),
         },
       });
+      broadcastScanUpdate(id, 'failed', 100, `[!] Invalid or blocked target: ${target}`);
       return;
     }
 
@@ -123,6 +140,7 @@ async function processScan(scan: {
       where: { id },
       data: { progress: 10, results: `[*] Initializing ${toolName} scan against ${target}...` },
     });
+    broadcastScanUpdate(id, 'running', 10, `[*] Initializing ${toolName} scan against ${target}...`);
 
     // Start a simulated progress interval to keep the UI moving
     let currentProgress = 10;
@@ -135,6 +153,7 @@ async function processScan(scan: {
             where: { id },
             data: { progress: currentProgress },
           });
+          broadcastScanUpdate(id, 'running', currentProgress, null);
         } catch { /* ignore */ }
       }
     }, 5000); // Update DB every 5 seconds
@@ -156,20 +175,42 @@ async function processScan(scan: {
       orderBy: { completedAt: 'desc' },
     });
 
+    let prevRaw = '';
+    if (prevScan?.results) {
+       const pr = prevScan.results as any;
+       prevRaw = typeof pr === 'string' ? pr : (pr.raw || '');
+    }
+
     const diffAlert = (prevScan && result.success) 
-      ? generateDiff(prevScan.results || '', result.output) 
+      ? generateDiff(prevRaw, result.output) 
       : null;
 
     // Update with final results
+    const finalStatus = result.success ? 'completed' : 'failed';
+    const finalResultsRaw = formatFinalOutput(result, toolName, target, diffAlert);
+    
+    const structuredResults = {
+      raw: finalResultsRaw,
+      summary: {
+        tool: toolName,
+        target: target,
+        duration: (result.executionTimeMs / 1000).toFixed(1) + 's',
+        status: finalStatus,
+        version: result.toolVersion,
+        hasDiffAlert: !!diffAlert
+      }
+    };
+
     await prisma.scan.update({
       where: { id },
       data: {
-        status: result.success ? 'completed' : 'failed',
+        status: finalStatus,
         progress: 100,
-        results: formatFinalOutput(result, toolName, target, diffAlert),
+        results: structuredResults,
         completedAt: new Date(),
       },
     });
+    broadcastScanUpdate(id, finalStatus, 100, structuredResults);
 
     // Fire off enterprise webhook alert
     if (result.success) {
@@ -194,6 +235,7 @@ async function processScan(scan: {
           completedAt: new Date(),
         },
       });
+      broadcastScanUpdate(id, 'failed', 100, `[!] Scan execution crashed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } catch {
       // Can't even update the DB — log and move on
     }
@@ -348,7 +390,7 @@ async function start() {
   const port = process.env.PORT || 10000;
   const workerApiKey = process.env.WORKER_API_KEY;
 
-  createServer((req, res) => {
+  const server = createServer((req, res) => {
     if (req.url === '/tools' && req.method === 'GET') {
       // Require API key if configured
       if (workerApiKey) {
@@ -368,8 +410,15 @@ async function start() {
 
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('PwnOps Scan Worker is healthy!\n');
-  }).listen(port, () => {
-    console.log(`\n  [Network] HTTP health-check server running on port ${port}`);
+  });
+
+  wss = new WebSocketServer({ server });
+  wss.on('connection', (ws) => {
+    ws.on('error', console.error);
+  });
+
+  server.listen(port, () => {
+    console.log(`\n  [Network] HTTP & WS server running on port ${port}`);
     if (workerApiKey) console.log(`  [Security] Worker API key authentication enabled`);
   });
 

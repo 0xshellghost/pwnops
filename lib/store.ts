@@ -50,8 +50,13 @@ export async function updateUserRole(id: string, role: string, organizationId: s
 }
 
 // ── Incident CRUD ────────────────────────────────────────
-export async function getIncidents(organizationId: string) { 
-  return prisma.incident.findMany({ where: { organizationId }, orderBy: { createdAt: 'desc' } }); 
+export async function getIncidents(organizationId: string, page = 1, limit = 50) { 
+  const skip = (page - 1) * limit;
+  const [data, total] = await Promise.all([
+    prisma.incident.findMany({ where: { organizationId }, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+    prisma.incident.count({ where: { organizationId } })
+  ]);
+  return { data, total, page, totalPages: Math.ceil(total / limit) };
 }
 export async function getIncidentById(id: string) { return prisma.incident.findUnique({ where: { id } }); }
 export async function addIncident(i: Omit<Incident, 'id' | 'numericId' | 'createdAt' | 'updatedAt'>) {
@@ -75,9 +80,48 @@ export async function updateIncidentStatus(id: string, status: string, organizat
   return prisma.incident.update({ where: { id }, data: { status } });
 }
 
+export async function updateIncident(id: string, update: Partial<Incident>, organizationId: string) {
+  const incident = await prisma.incident.findUnique({ where: { id } });
+  if (!incident || incident.organizationId !== organizationId) return null;
+  const { id: _id, numericId, createdAt, updatedAt, organizationId: _oid, ...safeUpdate } = update as any;
+  return prisma.incident.update({ where: { id }, data: safeUpdate });
+}
+
+export async function deleteIncident(id: string, organizationId: string) {
+  const incident = await prisma.incident.findUnique({ where: { id } });
+  if (!incident || incident.organizationId !== organizationId) return false;
+  await prisma.incidentComment.deleteMany({ where: { incidentId: id } });
+  await prisma.incident.delete({ where: { id } });
+  return true;
+}
+
+export async function addComment(incidentId: string, userId: string, content: string, organizationId: string) {
+  const incident = await prisma.incident.findUnique({ where: { id: incidentId } });
+  if (!incident || incident.organizationId !== organizationId) return null;
+  return prisma.incidentComment.create({
+    data: { content, incidentId, userId },
+    include: { user: { select: { name: true, email: true } } }
+  });
+}
+
+export async function getComments(incidentId: string, organizationId: string) {
+  const incident = await prisma.incident.findUnique({ where: { id: incidentId } });
+  if (!incident || incident.organizationId !== organizationId) return [];
+  return prisma.incidentComment.findMany({
+    where: { incidentId },
+    orderBy: { createdAt: 'desc' },
+    include: { user: { select: { name: true, email: true } } }
+  });
+}
+
 // ── Vulnerability CRUD ───────────────────────────────────
-export async function getVulnerabilities(organizationId: string) { 
-  return prisma.vulnerability.findMany({ where: { organizationId }, orderBy: { discoveredAt: 'desc' } }); 
+export async function getVulnerabilities(organizationId: string, page = 1, limit = 50) { 
+  const skip = (page - 1) * limit;
+  const [data, total] = await Promise.all([
+    prisma.vulnerability.findMany({ where: { organizationId }, orderBy: { discoveredAt: 'desc' }, skip, take: limit }),
+    prisma.vulnerability.count({ where: { organizationId } })
+  ]);
+  return { data, total, page, totalPages: Math.ceil(total / limit) };
 }
 export async function getVulnById(id: string) { return prisma.vulnerability.findUnique({ where: { id } }); }
 export async function updateVulnStatus(id: string, status: string, organizationId: string) {
@@ -87,7 +131,14 @@ export async function updateVulnStatus(id: string, status: string, organizationI
 }
 
 // ── Scan CRUD ────────────────────────────────────────────
-export async function getScans(organizationId: string) { return prisma.scan.findMany({ where: { organizationId }, orderBy: { startedAt: 'desc' } }); }
+export async function getScans(organizationId: string, page = 1, limit = 50) { 
+  const skip = (page - 1) * limit;
+  const [data, total] = await Promise.all([
+    prisma.scan.findMany({ where: { organizationId }, orderBy: { startedAt: 'desc' }, skip, take: limit }),
+    prisma.scan.count({ where: { organizationId } })
+  ]);
+  return { data, total, page, totalPages: Math.ceil(total / limit) };
+}
 export async function addScan(s: Omit<Scan, 'id'>) {
   return prisma.scan.create({
     data: {

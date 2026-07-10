@@ -10,7 +10,13 @@ const VALID_STATUSES = ['new', 'investigating', 'containing', 'resolved'] as con
 export async function GET(request: Request) {
   const user = await getAuthUser(request);
   if (!user || !user.organizationId) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  return Response.json({ incidents: await getIncidents(user.organizationId) });
+  
+  const url = new URL(request.url);
+  const page = parseInt(url.searchParams.get('page') || '1', 10);
+  const limit = parseInt(url.searchParams.get('limit') || '50', 10);
+  
+  const result = await getIncidents(user.organizationId, page, limit);
+  return Response.json({ incidents: result.data, pagination: { total: result.total, page: result.page, totalPages: result.totalPages } });
 }
 
 export async function POST(request: Request) {

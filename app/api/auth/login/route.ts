@@ -36,6 +36,10 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
+    if (user.twoFactorEnabled) {
+      return Response.json({ requires2FA: true, email: user.email });
+    }
+
     const token = await signToken({ userId: user.id, role: user.role, organizationId: user.organizationId });
 
     // Audit log: successful login

@@ -5,7 +5,7 @@ import { useAuth } from '@/components/AuthProvider';
 
 interface Scan {
   id: string; toolName: string; target: string; status: string;
-  progress: number; startedAt: string; completedAt: string | null; results: string | null;
+  progress: number; startedAt: string; completedAt: string | null; results: any | null;
 }
 
 interface ToolInfo {
@@ -39,11 +39,17 @@ export default function ScansPage() {
   const [launching, setLaunching] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const fetchScans = useCallback(async () => {
-    const res = await fetch('/api/scans');
-    if (res.ok) { const d = await res.json(); setScans(d.scans || []); }
-  }, []);
+    const res = await fetch(`/api/scans?page=${page}&limit=10`);
+    if (res.ok) { 
+      const d = await res.json(); 
+      setScans(d.scans || []); 
+      setTotalPages(d.pagination?.totalPages || 1);
+    }
+  }, [page]);
 
   const fetchTools = useCallback(async () => {
     try {
@@ -61,24 +67,46 @@ export default function ScansPage() {
 
   useEffect(() => { fetchScans(); fetchTools(); }, [fetchScans, fetchTools]);
 
-  // Poll only when there are active scans
+  // WebSocket for real-time updates
   useEffect(() => {
-    const hasRunning = scans.some(s => s.status === 'running' || s.status === 'queued');
-    if (!hasRunning) return;
+    const wsUrl = process.env.NEXT_PUBLIC_WORKER_WS_URL || 'ws://localhost:10000';
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout>;
 
-    let iv: ReturnType<typeof setInterval> | null = null;
-    const start = () => { iv = setInterval(fetchScans, 3000); };
-    const stop = () => { if (iv) clearInterval(iv); iv = null; };
-
-    const handleVisibility = () => {
-      if (document.hidden) stop();
-      else { fetchScans(); start(); }
+    const connect = () => {
+      ws = new WebSocket(wsUrl);
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'SCAN_UPDATE') {
+            setScans(prev => prev.map(s => {
+              if (s.id === data.scanId) {
+                return {
+                  ...s,
+                  status: data.status,
+                  progress: data.progress,
+                  results: data.results !== null ? data.results : s.results,
+                  completedAt: (data.status === 'completed' || data.status === 'failed') ? new Date().toISOString() : s.completedAt
+                };
+              }
+              return s;
+            }));
+          }
+        } catch (e) { /* ignore */ }
+      };
+      
+      ws.onclose = () => {
+        reconnectTimeout = setTimeout(connect, 3000);
+      };
     };
 
-    start();
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => { stop(); document.removeEventListener('visibilitychange', handleVisibility); };
-  }, [scans, fetchScans]);
+    connect();
+
+    return () => {
+      clearTimeout(reconnectTimeout);
+      if (ws) ws.close();
+    };
+  }, []);
 
   const launchScan = async () => {
     if (!target.trim() || !selectedTool) return;
@@ -290,13 +318,53 @@ export default function ScansPage() {
                     {expanded === s.id ? 'Hide Results ▲' : 'View Results ▼'}
                   </button>
                   {expanded === s.id && s.results && (
-                    <div className="terminal-output mt-3">{s.results}</div>
+                    <div className="mt-3">
+                      {typeof s.results === 'string' ? (
+                        <div className="terminal-output">{s.results}</div>
+                      ) : (
+                        <div className="space-y-3">
+                          {s.results.summary && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                              <div className="bg-bg-input p-2 rounded border border-border">
+                                <span className="text-text-muted block mb-1">Tool Version</span>
+                                <span className="font-bold">{s.results.summary.version || 'N/A'}</span>
+                              </div>
+                              <div className="bg-bg-input p-2 rounded border border-border">
+                                <span className="text-text-muted block mb-1">Duration</span>
+                                <span className="font-bold">{s.results.summary.duration || 'N/A'}</span>
+                              </div>
+                              {s.results.summary.hasDiffAlert && (
+                                <div className="col-span-2 bg-accent-red/10 p-2 rounded border border-accent-red text-accent-red flex items-center justify-center font-bold animate-pulse">
+                                  🚨 New Findings Detected
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <div className="terminal-output">{s.results.raw}</div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </>
               )}
             </div>
           ))}
         </div>
+        
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-5">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+              className="btn-outline text-xs px-3 py-2 disabled:opacity-30">&lt;</button>
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button key={i + 1} onClick={() => setPage(i + 1)}
+                className={`text-xs px-3 py-2 rounded-lg font-bold ${page === i + 1 ? 'bg-accent-cyan/15 text-accent-cyan border border-accent-cyan/30' : 'text-text-muted hover:text-text-primary'}`}
+              >{i + 1}</button>
+            ))}
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+              className="btn-outline text-xs px-3 py-2 disabled:opacity-30">&gt;</button>
+          </div>
+        )}
       </div>
     </div>
   );

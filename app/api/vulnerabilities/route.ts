@@ -15,7 +15,11 @@ export async function GET(request: Request) {
   const status = url.searchParams.get('status');
   const search = url.searchParams.get('search')?.toLowerCase();
 
-  let vulns = await getVulnerabilities(user.organizationId);
+  const page = parseInt(url.searchParams.get('page') || '1', 10);
+  const limit = parseInt(url.searchParams.get('limit') || '50', 10);
+
+  let vulnsResult = await getVulnerabilities(user.organizationId, page, limit);
+  let vulns = vulnsResult.data;
 
   if (severity && severity !== 'all') vulns = vulns.filter((v: any) => v.severity === severity);
   if (status && status !== 'all') vulns = vulns.filter((v: any) => v.status === status);
@@ -25,7 +29,7 @@ export async function GET(request: Request) {
     v.affectedAsset.toLowerCase().includes(search)
   );
 
-  return Response.json({ vulnerabilities: vulns });
+  return Response.json({ vulnerabilities: vulns, pagination: { total: vulnsResult.total, page: vulnsResult.page, totalPages: vulnsResult.totalPages } });
 }
 
 export async function PATCH(request: Request) {

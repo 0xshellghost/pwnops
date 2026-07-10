@@ -12,7 +12,8 @@ interface AuthUser {
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string; requires2FA?: boolean; email?: string }>;
+  verify2FA: (email: string, token: string) => Promise<{ ok: boolean; error?: string }>;
   register: (name: string, email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
@@ -56,11 +57,28 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
-    if (res.ok) {
+    if (res.ok || data.requires2FA) {
+      if (data.requires2FA) {
+        return { ok: true, requires2FA: true, email: data.email };
+      }
       setUser(data.user);
       return { ok: true };
     }
     return { ok: false, error: data.error || 'Login failed' };
+  };
+
+  const verify2FA = async (email: string, token: string) => {
+    const res = await fetch('/api/auth/2fa/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, token }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setUser(data.user);
+      return { ok: true };
+    }
+    return { ok: false, error: data.error || 'Verification failed' };
   };
 
   const register = async (name: string, email: string, password: string) => {
@@ -84,7 +102,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, verify2FA, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

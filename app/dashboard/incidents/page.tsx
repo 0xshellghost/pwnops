@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/components/AuthProvider';
+import IncidentDetailModal from './IncidentDetailModal';
 
 interface Incident {
   id: string; numericId: number; title: string; description: string;
@@ -25,6 +26,7 @@ export default function IncidentsPage() {
   const [filter, setFilter] = useState<string | null>(null);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
 
   const fetchIncidents = useCallback(async () => {
     const res = await fetch('/api/incidents');
@@ -139,7 +141,8 @@ export default function IncidentsPage() {
                     draggable={canEdit}
                     onDragStart={e => { e.dataTransfer.setData('incidentId', inc.id); setDragId(inc.id); }}
                     onDragEnd={() => setDragId(null)}
-                    className={`kanban-card severity-border-${inc.severity} ${dragId === inc.id ? 'dragging' : ''}`}
+                    onClick={() => setSelectedIncident(inc)}
+                    className={`kanban-card severity-border-${inc.severity} ${dragId === inc.id ? 'dragging' : ''} cursor-pointer`}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className={`badge badge-${inc.severity}`}>● {inc.severity.toUpperCase()}</span>
@@ -173,6 +176,16 @@ export default function IncidentsPage() {
 
       {/* Create Modal */}
       {showModal && <CreateModal onClose={() => setShowModal(false)} onCreate={createIncident} />}
+
+      {/* Detail Modal */}
+      {selectedIncident && (
+        <IncidentDetailModal 
+          incident={selectedIncident} 
+          onClose={() => setSelectedIncident(null)} 
+          onUpdate={() => { fetchIncidents(); setSelectedIncident(null); }} 
+          onDelete={() => { fetchIncidents(); setSelectedIncident(null); }} 
+        />
+      )}
     </div>
   );
 }

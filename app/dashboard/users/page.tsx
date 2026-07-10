@@ -14,6 +14,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [teamName, setTeamName] = useState('Team Management');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [show2FAModal, setShow2FAModal] = useState(false);
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'viewer' });
   const [error, setError] = useState('');
 
@@ -78,10 +79,15 @@ export default function UsersPage() {
             <div className="w-14 h-14 rounded-full bg-accent-cyan/10 border-2 border-accent-cyan/30 flex items-center justify-center text-xl font-bold text-accent-cyan">
               {me.name.split(' ').map(w => w[0]).join('')}
             </div>
-            <div>
+            <div className="flex-1">
               <h3 className="font-bold text-lg">{me.name}</h3>
               <p className="text-text-muted text-sm" style={{ fontFamily: 'var(--font-mono)' }}>{me.email}</p>
               <span className={`badge mt-1 ${roleBadge(me.role)}`}>{me.role.toUpperCase()}</span>
+            </div>
+            <div>
+              <button onClick={() => setShow2FAModal(true)} className="btn-outline text-xs">
+                Manage 2FA
+              </button>
             </div>
           </div>
         </div>
@@ -211,6 +217,92 @@ export default function UsersPage() {
           </div>
         </div>
       )}
+
+      {show2FAModal && <TwoFactorModal onClose={() => setShow2FAModal(false)} />}
+    </div>
+  );
+}
+
+function TwoFactorModal({ onClose }: { onClose: () => void }) {
+  const [loading, setLoading] = useState(true);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [secret, setSecret] = useState('');
+  const [enabled, setEnabled] = useState(false);
+  const [token, setToken] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetch('/api/auth/2fa/setup')
+      .then(r => r.json())
+      .then(d => {
+        setQrCodeUrl(d.qrCodeUrl);
+        setSecret(d.secret);
+        setEnabled(d.enabled);
+        setLoading(false);
+      });
+  }, []);
+
+  const handleEnable = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    const res = await fetch('/api/auth/2fa/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, secret }),
+    });
+    if (res.ok) {
+      setEnabled(true);
+      setToken('');
+    } else {
+      const data = await res.json();
+      setError(data.error || 'Invalid code');
+    }
+  };
+
+  const handleDisable = async () => {
+    if (!confirm('Are you sure you want to disable 2FA?')) return;
+    await fetch('/api/auth/2fa/setup', { method: 'DELETE' });
+    setEnabled(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+      <div className="card-glass w-full max-w-md p-6">
+        <h2 className="text-xl font-bold mb-4">Two-Factor Authentication</h2>
+        {loading ? (
+          <p className="text-text-muted">Loading...</p>
+        ) : enabled ? (
+          <div className="space-y-4">
+            <div className="bg-accent-green/10 border border-accent-green/20 p-4 rounded-lg text-accent-green">
+              2FA is currently enabled for your account.
+            </div>
+            <button onClick={handleDisable} className="btn-outline text-accent-red border-accent-red/50 hover:bg-accent-red/10 w-full py-2">
+              Disable 2FA
+            </button>
+            <button onClick={onClose} className="btn-outline w-full py-2">Close</button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-text-secondary text-sm">Scan this QR code with your authenticator app (like Google Authenticator or Authy).</p>
+            <div className="flex justify-center bg-white p-4 rounded-lg">
+              {qrCodeUrl && <img src={qrCodeUrl} alt="2FA QR Code" />}
+            </div>
+            <div className="text-center">
+              <span className="text-text-muted text-xs label-mono">{secret}</span>
+            </div>
+            <form onSubmit={handleEnable} className="space-y-4 mt-4">
+              <div>
+                <input type="text" value={token} onChange={e => setToken(e.target.value)} placeholder="Enter 6-digit code" className="input-field text-center tracking-widest text-lg" required maxLength={6} />
+              </div>
+              {error && <div className="text-accent-red text-sm font-bold bg-accent-red/10 p-2 rounded border border-accent-red/20">{error}</div>}
+              <div className="flex gap-3">
+                <button type="button" onClick={onClose} className="flex-1 btn-outline">Cancel</button>
+                <button type="submit" className="flex-1 btn-primary">Enable 2FA</button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

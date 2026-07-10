@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 
 interface DashData {
-  incidents: { severity: string; status: string }[];
-  vulns: { severity: string; status: string; cveId: string; affectedAsset: string; cvssScore: number }[];
+  incidents: { total: number; active: number; critical: number; high: number; medium: number; low: number };
+  scans: { total: number; completed: number; failed: number };
+  vulns: { total: number; open: number; critical: number; recent: any[] };
   threatFeed: { message: string; timestamp: string }[];
-  scans: { status: string; startedAt: string; completedAt: string | null }[];
 }
 
 function AnimatedNumber({ target, suffix = '' }: { target: number; suffix?: string }) {
@@ -30,24 +31,14 @@ function AnimatedNumber({ target, suffix = '' }: { target: number; suffix?: stri
 
 export default function DashboardHome() {
   const [data, setData] = useState<DashData | null>(null);
-
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   async function loadData() {
     setIsRefreshing(true);
     try {
-      const [incRes, vulnRes, scanRes] = await Promise.all([
-        fetch('/api/incidents'), fetch('/api/vulnerabilities'), fetch('/api/scans'),
-      ]);
-      const inc = await incRes.json();
-      const vul = await vulnRes.json();
-      const scn = await scanRes.json();
-      setData({
-        incidents: inc.incidents || [],
-        vulns: vul.vulnerabilities || [],
-        threatFeed: scn.threatFeed || [],
-        scans: scn.scans || [],
-      });
+      const res = await fetch('/api/dashboard/metrics');
+      const json = await res.json();
+      if (!json.error) setData(json);
     } finally {
       setIsRefreshing(false);
     }
@@ -63,17 +54,11 @@ export default function DashboardHome() {
     </div>
   );
 
-  const criticalIncidents = data.incidents.filter(i => i.severity === 'critical' && i.status !== 'resolved').length;
-  const activeIncidents = data.incidents.filter(i => i.status !== 'resolved').length;
-  const openVulns = data.vulns.filter(v => v.status === 'open').length;
-  const criticalVulns = data.vulns.filter(v => v.severity === 'critical').length;
-
-  // Donut chart segments
-  const total = Math.max(activeIncidents, 1);
-  const critPct = data.incidents.filter(i => i.severity === 'critical' && i.status !== 'resolved').length / total * 100;
-  const highPct = data.incidents.filter(i => i.severity === 'high' && i.status !== 'resolved').length / total * 100;
-  const medPct = data.incidents.filter(i => i.severity === 'medium' && i.status !== 'resolved').length / total * 100;
-  const lowPct = data.incidents.filter(i => i.severity === 'low' && i.status !== 'resolved').length / total * 100;
+  const total = Math.max(data.incidents.active, 1);
+  const critPct = data.incidents.critical / total * 100;
+  const highPct = data.incidents.high / total * 100;
+  const medPct = data.incidents.medium / total * 100;
+  const lowPct = data.incidents.low / total * 100;
 
   const donutGradient = `conic-gradient(
     #ff3e3e 0% ${critPct}%,
@@ -82,8 +67,6 @@ export default function DashboardHome() {
     #3b82f6 ${critPct + highPct + medPct}% ${critPct + highPct + medPct + lowPct}%,
     rgba(255,255,255,0.06) ${critPct + highPct + medPct + lowPct}% 100%
   )`;
-
-  const recentVulns = data.vulns.slice(0, 4);
 
   return (
     <div className="animate-fade-in flex flex-col pb-6">
@@ -98,20 +81,20 @@ export default function DashboardHome() {
                 <h2 className="font-bold text-xl">Security Posture</h2>
                 <p className="text-text-muted text-sm mt-1">Computed from live data</p>
               </div>
-              <span className={`badge px-3 py-1 ${criticalIncidents > 0 ? 'badge-critical' : 'badge-low'}`}>
-                {criticalIncidents > 0 ? `${criticalIncidents} Critical` : 'Stable'}
+              <span className={`badge px-3 py-1 ${data.incidents.critical > 0 ? 'badge-critical' : 'badge-low'}`}>
+                {data.incidents.critical > 0 ? `${data.incidents.critical} Critical` : 'Stable'}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-6 mt-6">
               <div className="bg-bg-surface/50 p-4 rounded-xl border border-border/50">
                 <div className="text-4xl font-bold text-accent-cyan">
-                  <AnimatedNumber target={data.scans.length > 0 ? Math.round(data.scans.filter(s => s.status === 'completed').length / data.scans.length * 100) : 0} suffix="" />%
+                  <AnimatedNumber target={data.scans.total > 0 ? Math.round(data.scans.completed / data.scans.total * 100) : 0} suffix="" />%
                 </div>
                 <div className="label-mono mt-2">Scan Success Rate</div>
               </div>
               <div className="bg-bg-surface/50 p-4 rounded-xl border border-border/50">
                 <div className="text-4xl font-bold text-text-primary">
-                  <AnimatedNumber target={data.incidents.length > 0 ? Math.round(data.incidents.filter(i => i.status === 'resolved').length / data.incidents.length * 100) : 0} suffix="" />%
+                  <AnimatedNumber target={data.incidents.total > 0 ? Math.round((data.incidents.total - data.incidents.active) / data.incidents.total * 100) : 0} suffix="" />%
                 </div>
                 <div className="label-mono mt-2">Incidents Resolved</div>
               </div>
@@ -127,22 +110,25 @@ export default function DashboardHome() {
               </button>
             </div>
             <div className="overflow-x-auto">
-              <table className="data-table">
+              <table className="data-table w-full">
                 <thead>
-                  <tr>
-                    <th className="py-3">CVE ID</th>
-                    <th className="py-3">Target Asset</th>
-                    <th className="py-3">Severity</th>
+                  <tr className="text-left text-xs text-text-muted">
+                    <th className="py-3 font-mono">CVE ID</th>
+                    <th className="py-3 font-mono">Target Asset</th>
+                    <th className="py-3 font-mono">Severity</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {recentVulns.map(v => (
-                    <tr key={v.cveId} className="group transition-colors">
+                  {data.vulns.recent.map(v => (
+                    <tr key={v.cveId} className="group transition-colors border-t border-border/50">
                       <td className="text-accent-cyan text-sm py-4" style={{ fontFamily: 'var(--font-mono)' }}>{v.cveId}</td>
                       <td className="text-sm py-4" style={{ fontFamily: 'var(--font-mono)' }}>{v.affectedAsset}</td>
                       <td className="py-4"><span className={`badge badge-${v.severity}`}>{v.severity} ({v.cvssScore})</span></td>
                     </tr>
                   ))}
+                  {data.vulns.recent.length === 0 && (
+                    <tr><td colSpan={3} className="py-4 text-center text-text-muted text-sm">No recent vulnerabilities found.</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -153,9 +139,9 @@ export default function DashboardHome() {
             <h3 className="font-bold text-lg mb-5">Scan Activity</h3>
             <div className="space-y-5">
               {[
-                { label: 'Completed', value: data.scans.filter(s => s.status === 'completed').length, total: Math.max(data.scans.length, 1), color: 'bg-accent-green' },
-                { label: 'Failed', value: data.scans.filter(s => s.status === 'failed').length, total: Math.max(data.scans.length, 1), color: 'bg-accent-red' },
-                { label: 'Open Vulnerabilities', value: data.vulns.filter(v => v.status === 'open').length, total: Math.max(data.vulns.length, 1), color: 'bg-accent-amber' },
+                { label: 'Completed Scans', value: data.scans.completed, total: Math.max(data.scans.total, 1), color: 'bg-accent-green' },
+                { label: 'Failed Scans', value: data.scans.failed, total: Math.max(data.scans.total, 1), color: 'bg-accent-red' },
+                { label: 'Open Vulnerabilities', value: data.vulns.open, total: Math.max(data.vulns.total, 1), color: 'bg-accent-amber' },
               ].map(s => (
                 <div key={s.label}>
                   <div className="flex justify-between text-sm mb-2">
@@ -178,15 +164,15 @@ export default function DashboardHome() {
             <p className="label-mono text-center mb-6">Active Incidents</p>
             <div className="flex justify-center mb-6">
               <div className="donut w-40 h-40" style={{ background: donutGradient }}>
-                <div className="donut-inner w-32 h-32">
-                  <span className="text-4xl font-bold">{String(activeIncidents).padStart(2, '0')}</span>
+                <div className="donut-inner w-32 h-32 flex flex-col items-center justify-center">
+                  <span className="text-4xl font-bold">{String(data.incidents.active).padStart(2, '0')}</span>
                   <span className="label-mono text-accent-red mt-1">Active</span>
                 </div>
               </div>
             </div>
-            <a href="/dashboard/incidents" className="btn-outline w-full text-center text-sm py-3">
+            <Link href="/dashboard/incidents" className="btn-outline w-full text-center text-sm py-3">
               Triage Queue →
-            </a>
+            </Link>
           </div>
 
           {/* Live Threat Feed */}
@@ -202,6 +188,9 @@ export default function DashboardHome() {
                   <span className="leading-relaxed">{t.message}</span>
                 </li>
               ))}
+              {data.threatFeed.length === 0 && (
+                <li className="text-text-muted text-sm text-center italic py-2">No active threats detected.</li>
+              )}
             </ul>
           </div>
 
@@ -209,9 +198,9 @@ export default function DashboardHome() {
           <div className="card-glass p-6">
             <h3 className="font-bold text-lg mb-2">Quick Scan</h3>
             <p className="text-text-muted text-sm mb-5 leading-relaxed">Initialize heuristic deep-dive on configured assets.</p>
-            <a href="/dashboard/scans" className="btn-primary w-full text-center text-sm py-3">
+            <Link href="/dashboard/scans" className="btn-primary w-full text-center block text-sm py-3">
               ⚡ Run Diagnostic
-            </a>
+            </Link>
           </div>
         </div>
       </div>

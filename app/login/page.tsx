@@ -7,12 +7,15 @@ import { useAuth } from '@/components/AuthProvider';
 
 function LoginContent() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, verify2FA } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [twoFactorEmail, setTwoFactorEmail] = useState('');
   const searchParams = useSearchParams();
 
   // Display OAuth callback errors
@@ -35,9 +38,23 @@ function LoginContent() {
     setError('');
     setLoading(true);
     try {
-      const res = await login(email, password);
-      if (res.ok) router.push('/dashboard');
-      else setError(res.error || 'Login failed');
+      if (requires2FA) {
+        const res = await verify2FA(twoFactorEmail, twoFactorCode);
+        if (res.ok) router.push('/dashboard');
+        else setError(res.error || 'Verification failed');
+      } else {
+        const res = await login(email, password);
+        if (res.ok) {
+          if (res.requires2FA) {
+            setRequires2FA(true);
+            setTwoFactorEmail(res.email!);
+          } else {
+            router.push('/dashboard');
+          }
+        } else {
+          setError(res.error || 'Login failed');
+        }
+      }
     } catch { setError('Network error'); }
     finally { setLoading(false); }
   };
@@ -58,6 +75,18 @@ function LoginContent() {
             <h1 className="text-2xl font-bold mb-1">Initialize Session</h1>
             <p className="text-text-secondary text-sm mb-6">Identify yourself to access the platform.</p>
 
+            {requires2FA ? (
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div>
+                  <label className="label-mono block mb-2">Authenticator Code</label>
+                  <input type="text" value={twoFactorCode} onChange={e => setTwoFactorCode(e.target.value)} placeholder="123456" className="input-field text-center tracking-widest text-lg" required maxLength={6} />
+                </div>
+                {error && <div className="text-accent-red text-sm bg-accent-red/10 border border-accent-red/20 rounded-lg px-4 py-2">{error}</div>}
+                <button type="submit" disabled={loading} className="btn-primary w-full py-3">
+                  {loading ? 'Verifying...' : 'Verify Access'}
+                </button>
+              </form>
+            ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="label-mono block mb-2">Identifier (Email)</label>
@@ -72,7 +101,7 @@ function LoginContent() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="label-mono">Access Key (Password)</label>
-                  <span className="label-mono text-text-muted">Recovery N/A</span>
+                  <Link href="/forgot-password" className="label-mono text-accent-cyan hover:underline">Forgot Access Key?</Link>
                 </div>
                 <div className="relative">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted">
@@ -93,6 +122,7 @@ function LoginContent() {
                 {loading ? 'Authenticating...' : 'Authorize Access ⊘'}
               </button>
             </form>
+            )}
 
             <div className="mt-6">
               <p className="text-center label-mono mb-4">External Providers</p>
