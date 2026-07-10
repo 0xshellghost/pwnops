@@ -102,7 +102,7 @@ export default function IntegrationsPage() {
 
       {showAdd && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="card-glass w-full max-w-md p-6">
+          <div className="card-glass w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Add Webhook Integration</h2>
             <form onSubmit={handleAdd} className="space-y-4">
               <div>

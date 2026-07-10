@@ -218,7 +218,7 @@ export default function UsersPage() {
       {/* Add User Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="card-glass w-full max-w-md p-6">
+          <div className="card-glass w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Add Team Member</h2>
             <form onSubmit={handleAddUser} className="space-y-4">
               {error && <div className="text-accent-red text-sm font-bold bg-accent-red/10 p-2 rounded border border-accent-red/20">{error}</div>}
@@ -339,7 +339,7 @@ function TwoFactorModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="card-glass w-full max-w-md p-6">
+      <div className="card-glass w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
         <h2 className="text-xl font-bold mb-4">Two-Factor Authentication</h2>
         {loading ? (
           <p className="text-text-muted">Loading...</p>
