@@ -40,7 +40,7 @@ let totalProcessed = 0;
 
 let wss: WebSocketServer | null = null;
 
-function broadcastScanUpdate(scanId: string, status: string, progress: number, results: any) {
+function broadcastScanUpdate(scanId: string, status: string, progress: number, results: unknown) {
   if (!wss) return;
   const msg = JSON.stringify({ type: 'SCAN_UPDATE', scanId, status, progress, results });
   wss.clients.forEach(client => {
@@ -72,7 +72,7 @@ async function processScheduledScans() {
       try {
         const interval = CronExpressionParser.parse(schedule.cronSchedule);
         nextRun = interval.next().toDate();
-      } catch (err) {
+      } catch (_err) {
         console.error(`[${WORKER_ID}] Invalid cron expression for schedule ${schedule.id}`);
         nextRun = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
       }
@@ -217,7 +217,7 @@ async function processScan(scan: {
 
     let prevRaw = '';
     if (prevScan?.results) {
-       const pr = prevScan.results as any;
+       const pr = prevScan.results as { raw?: string } | string | null;
        prevRaw = typeof pr === 'string' ? pr : (pr.raw || '');
     }
 

@@ -247,7 +247,7 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
     displayName: 'Lynis Config Audit',
     description: 'System hardening and configuration audit',
     resolveBinary: () => findBinary(['lynis']),
-    buildArgs: (target) => [
+    buildArgs: (_target) => [
       'audit', 'system',
       '--quick',
       '--no-colors',

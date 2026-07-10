@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import bcrypt from 'bcryptjs';
-import { User, Incident, Vulnerability, Scan, ThreatFeedEntry } from './types';
+import { Incident, Scan } from './types';
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient; seeded: boolean };
 
@@ -83,7 +83,7 @@ export async function updateIncidentStatus(id: string, status: string, organizat
 export async function updateIncident(id: string, update: Partial<Incident>, organizationId: string) {
   const incident = await prisma.incident.findUnique({ where: { id } });
   if (!incident || incident.organizationId !== organizationId) return null;
-  const { id: _id, numericId, createdAt, updatedAt, organizationId: _oid, ...safeUpdate } = update as any;
+  const { id: _id, numericId: _numericId, createdAt: _createdAt, updatedAt: _updatedAt, organizationId: _oid, ...safeUpdate } = update as Partial<Incident> & Record<string, unknown>;
   return prisma.incident.update({ where: { id }, data: safeUpdate });
 }
 
