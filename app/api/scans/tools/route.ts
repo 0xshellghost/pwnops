@@ -21,6 +21,8 @@ export async function GET(request: Request) {
       const res = await fetch(`${workerUrl.replace(/\/$/, '')}/tools`, { cache: 'no-store', headers });
       if (res.ok) {
         tools = await res.json();
+      } else {
+        throw new Error(`Worker returned HTTP ${res.status}`);
       }
     } catch (err: any) {
       console.error('Failed to fetch tools from worker:', err);
