@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { dispatchWebhook } from './webhooks';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import bcrypt from 'bcryptjs';
@@ -65,7 +66,7 @@ export async function getIncidents(organizationId: string, page = 1, limit = 50)
 }
 export async function getIncidentById(id: string) { return prisma.incident.findUnique({ where: { id } }); }
 export async function addIncident(i: Omit<Incident, 'id' | 'numericId' | 'createdAt' | 'updatedAt'>) {
-  return prisma.incident.create({
+  const incident = await prisma.incident.create({
     data: {
       title: i.title,
       description: i.description,
@@ -78,18 +79,24 @@ export async function addIncident(i: Omit<Incident, 'id' | 'numericId' | 'create
       organizationId: i.organizationId,
     },
   });
+  dispatchWebhook(i.organizationId, 'INCIDENT_CREATED', { incident });
+  return incident;
 }
 export async function updateIncidentStatus(id: string, status: string, organizationId: string) {
   const incident = await prisma.incident.findUnique({ where: { id } });
   if (!incident || incident.organizationId !== organizationId) return null;
-  return prisma.incident.update({ where: { id }, data: { status } });
+  const updatedIncident = await prisma.incident.update({ where: { id }, data: { status } });
+  dispatchWebhook(organizationId, 'INCIDENT_UPDATED', { incident: updatedIncident });
+  return updatedIncident;
 }
 
 export async function updateIncident(id: string, update: Partial<Incident>, organizationId: string) {
   const incident = await prisma.incident.findUnique({ where: { id } });
   if (!incident || incident.organizationId !== organizationId) return null;
   const { id: _id, numericId: _numericId, createdAt: _createdAt, updatedAt: _updatedAt, organizationId: _oid, ...safeUpdate } = update as Partial<Incident> & Record<string, unknown>;
-  return prisma.incident.update({ where: { id }, data: safeUpdate });
+  const updatedIncident = await prisma.incident.update({ where: { id }, data: safeUpdate });
+  dispatchWebhook(organizationId, 'INCIDENT_UPDATED', { incident: updatedIncident });
+  return updatedIncident;
 }
 
 export async function deleteIncident(id: string, organizationId: string) {
@@ -164,7 +171,15 @@ export async function updateScan(id: string, update: Partial<Pick<Scan, 'progres
   const scan = await prisma.scan.findUnique({ where: { id } });
   if (!scan) return null;
   if (organizationId && scan.organizationId !== organizationId) return null;
-  return prisma.scan.update({ where: { id }, data: { ...update, results: update.results ? (update.results as any) : undefined } });
+  const updatedScan = await prisma.scan.update({ where: { id }, data: { ...update, results: update.results ? (update.results as any) : undefined } });
+  
+  if (update.status === 'completed' && scan.status !== 'completed') {
+    dispatchWebhook(scan.organizationId, 'SCAN_COMPLETED', { scan: updatedScan });
+  } else if (update.status === 'failed' && scan.status !== 'failed') {
+    dispatchWebhook(scan.organizationId, 'SCAN_FAILED', { scan: updatedScan });
+  }
+  
+  return updatedScan;
 }
 
 // ── Threat Feed ──────────────────────────────────────────
