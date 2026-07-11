@@ -73,9 +73,12 @@ export default function ScansPage() {
 
     const connect = () => {
       try {
-        // Prevent SecurityError on HTTPS pages when connecting to insecure ws://
         if (wsUrl.startsWith('ws://') && window.location.protocol === 'https:') {
-          console.warn('Skipping insecure WebSocket connection on HTTPS page.');
+          console.warn('Skipping insecure WebSocket connection on HTTPS page. Falling back to polling.');
+          const pollInterval = setInterval(() => {
+            void fetchScans();
+          }, 3000);
+          ws = { close: () => clearInterval(pollInterval) } as any;
           return;
         }
         ws = new WebSocket(wsUrl);
