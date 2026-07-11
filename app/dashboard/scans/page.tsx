@@ -386,6 +386,9 @@ export default function ScansPage() {
                       className="btn-outline text-xs flex-1">
                       {expanded === s.id ? 'Hide Results ▲' : 'Preview Results ▼'}
                     </button>
+                    <a href={`/dashboard/scans/${s.id}/report`} target="_blank" rel="noopener noreferrer" className="btn-primary text-xs flex-1 flex items-center justify-center gap-2">
+                      📄 Full Report (PDF)
+                    </a>
                   </div>
                   {expanded === s.id && s.results && (
                     <div className="mt-3">
