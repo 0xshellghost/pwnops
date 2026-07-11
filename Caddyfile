@@ -1,8 +1,7 @@
 {
-	email your-email@example.com
+	email garglavay@gmail.com
 }
 
-# Replace api.yourdomain.com with your actual domain
-api.yourdomain.com {
+pwnops-worker.duckdns.org {
 	reverse_proxy worker:10000
 }
