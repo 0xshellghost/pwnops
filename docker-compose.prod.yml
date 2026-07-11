@@ -7,6 +7,8 @@ services:
       dockerfile: Dockerfile.worker
     env_file:
       - .env
+    environment:
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
     restart: always
     # We no longer expose port 10000 directly to the host
     # Caddy will route external traffic to this container internally
