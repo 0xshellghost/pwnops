@@ -7,18 +7,24 @@ PwnOps is a high-fidelity, high-performance automated vulnerability management a
 - **Cyber-Themed Design System**: Built with Tailwind CSS 4, featuring glassmorphism, neon accents, and custom animations.
 - **Incident Management**: Interactive drag-and-drop Kanban board for incident triage.
 - **Vulnerability Tracking**: Advanced data tables for managing CVEs with real-time filtering.
-- **Tool Orchestration**: Trigger and monitor simulated security scans with terminal-style output.
-- **Background Scan Workers**: Standalone worker processes for polling and executing real security scans (e.g., nmap, testssl.sh).
-- **Role-Based Access Control (RBAC)**: Secure JWT authentication with strict route protection via Next.js Proxy.
-- **Edge Security**: Comprehensive security headers (HSTS, CSP, X-Frame-Options) and rate limiting.
+- **Tool Orchestration**: Trigger and monitor real security scans with terminal-style streaming output. Includes out-of-the-box support for Nmap, TestSSL, Lynis, WhatWeb, Subfinder, and Nuclei.
+- **Background Scan Workers**: Standalone worker processes decoupled from the web app for polling and executing resource-intensive scan jobs via WebSockets.
+- **Role-Based Access Control (RBAC)**: Secure JWT authentication with strict route protection via a custom Next.js Edge Proxy.
+- **Advanced Authentication**: Multi-Factor Authentication (2FA) with OTP generation and secure password hashing.
+- **Email Notifications**: Seamless email integration utilizing Resend.
+- **Edge Security & Performance**: Redis-backed rate limiting (via Upstash), comprehensive security headers (HSTS, CSP, X-Frame-Options), and optimized caching.
 
 ## Tech Stack
 
 - **Framework**: Next.js 16 (App Router, Server Components)
 - **Styling**: Tailwind CSS 4
-- **Database**: PostgreSQL (via Prisma ORM)
-- **Authentication**: JWT (JSON Web Tokens) via `jose`, bcryptjs for password hashing
-- **Worker**: Node.js standalone process with `tsx` and WebSockets
+- **Database & ORM**: PostgreSQL via Prisma ORM
+- **Authentication**: JWT via `jose`, `bcryptjs` for hashing, `otplib` & `qrcode` for 2FA
+- **Caching & Rate Limiting**: Upstash Redis & `@upstash/ratelimit`
+- **Background Worker**: Standalone Node.js process using `tsx`, `cron-parser` for scheduling, and `ws` for real-time WebSockets
+- **Email Delivery**: Resend API
+- **Deployment & Infrastructure**: Docker & Docker Compose for sandboxing workers, Caddy for reverse proxying
+- **Testing**: Playwright for End-to-End (E2E) testing
 
 ## Architecture & Folder Structure
 
@@ -58,7 +64,9 @@ The background worker (`worker/scan-worker.ts`) is a crucial component that exec
   ```
   *(Or execute via `npx tsx worker/scan-worker.ts`)*
 
-## Getting Started
+## Getting Started (Local Development)
+
+The easiest way to run PwnOps locally is by using Docker to spin up the PostgreSQL database and the Background Scan Worker (which comes pre-installed with all required security tools).
 
 1. **Install Dependencies**
    ```bash
@@ -66,30 +74,31 @@ The background worker (`worker/scan-worker.ts`) is a crucial component that exec
    ```
 
 2. **Environment Configuration**
-   Copy the example environment file and configure your database and `JWT_SECRET`.
+   Copy the example environment file:
    ```bash
    cp .env.example .env.local
    ```
+   *Note: Edit `.env.local` and change `DATABASE_URL` to point to the local Docker database: `postgresql://postgres:password123@localhost:5432/pwnops`*
 
-3. **Initialize the Database**
+3. **Start Local Services (Database & Worker)**
+   Use Docker Compose to start the local PostgreSQL database and the background scan worker:
+   ```bash
+   docker compose up -d
+   ```
+
+4. **Initialize the Database**
+   Push the schema to your new local database:
    ```bash
    npx prisma generate
    npx prisma db push
-   # Optional: seed initial data
-   # npm run seed
    ```
 
-4. **Development Server**
-   Start the development server with Turbopack:
+5. **Start the Development Server**
+   Start the Next.js frontend:
    ```bash
    npm run dev
    ```
    Navigate to [http://localhost:3000](http://localhost:3000).
-
-5. **Start the Background Worker** (In a separate terminal)
-   ```bash
-   npm run worker:scan
-   ```
 
 ## Linting & Testing
 

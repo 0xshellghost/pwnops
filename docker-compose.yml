@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # The PostgreSQL database for the application
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: pwnops
+    ports:
+      - "5432:5432"
+    volumes:
+      - pwnops_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pwnops"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # The Background Scan Worker (includes all security tools)
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://postgres:password123@db:5432/pwnops
+      - WORKER_POLL_INTERVAL=3000
+      - WORKER_MAX_CONCURRENT=3
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+    # Uses the local codebase for development without needing rebuilds
+    volumes:
+      - ./worker:/app/worker
+      - ./lib:/app/lib
+      - ./prisma:/app/prisma
+
+volumes:
+  pwnops_db_data:
