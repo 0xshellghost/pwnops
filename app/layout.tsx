@@ -83,6 +83,14 @@ export const metadata: Metadata = {
   },
 };
 
+import type { Viewport } from "next";
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 import AuthProvider from '@/components/AuthProvider';
 
 export default function RootLayout({
