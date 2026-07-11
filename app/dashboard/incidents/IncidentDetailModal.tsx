@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '@/components/AuthProvider';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { Incident, IncidentComment } from '@/lib/types';
@@ -77,7 +78,13 @@ export default function IncidentDetailModal({
     fetchComments();
   };
 
-  return (
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return null;
+
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-start mb-4">
@@ -158,6 +165,7 @@ export default function IncidentDetailModal({
           </form>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

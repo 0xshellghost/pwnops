@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, memo } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '@/components/AuthProvider';
 import IncidentDetailModal from './IncidentDetailModal';
 import { Incident } from '@/lib/types';
@@ -169,8 +170,13 @@ function CreateModal({ onClose, onCreate }: {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [sev, setSev] = useState('high');
+  const [mounted, setMounted] = useState(false);
 
-  return (
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return null;
+
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         <h2 className="text-xl font-bold mb-1">New Incident</h2>
@@ -201,7 +207,8 @@ function CreateModal({ onClose, onCreate }: {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

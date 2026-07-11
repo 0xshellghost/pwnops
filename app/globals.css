@@ -143,13 +143,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   border-top: 1px solid transparent;
 }
 
-.btn-primary::after {
-  content: ''; position: absolute; top: 8px; right: 8px; width: 6px; height: 6px;
-  background: #fff; border-radius: 50%; box-shadow: 0 0 8px #fff;
-}
-.btn-primary:active::after { background: var(--color-accent-cyan); box-shadow: 0 0 12px var(--color-accent-cyan); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: translateY(4px); box-shadow: none; border-top: 1px solid transparent; }
-.btn-primary:disabled::after { background: #666; box-shadow: none; }
 
 .btn-outline {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
