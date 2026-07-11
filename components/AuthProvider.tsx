@@ -12,8 +12,8 @@ interface AuthUser {
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string; requires2FA?: boolean; email?: string }>;
-  verify2FA: (email: string, token: string) => Promise<{ ok: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string; requires2FA?: boolean; preAuthToken?: string }>;
+  verify2FA: (preAuthToken: string, token: string) => Promise<{ ok: boolean; error?: string }>;
   register: (name: string, email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
@@ -59,7 +59,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     const data = await res.json();
     if (res.ok || data.requires2FA) {
       if (data.requires2FA) {
-        return { ok: true, requires2FA: true, email: data.email };
+        return { ok: true, requires2FA: true, preAuthToken: data.preAuthToken };
       }
       setUser(data.user);
       return { ok: true };
@@ -67,11 +67,11 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     return { ok: false, error: data.error || 'Login failed' };
   };
 
-  const verify2FA = async (email: string, token: string) => {
+  const verify2FA = async (preAuthToken: string, token: string) => {
     const res = await fetch('/api/auth/2fa/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, token }),
+      body: JSON.stringify({ preAuthToken, token }),
     });
     const data = await res.json();
     if (res.ok) {

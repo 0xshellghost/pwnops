@@ -3,7 +3,7 @@
 // ──────────────────────────────────────────────────────────
 import bcrypt from 'bcryptjs';
 import { findUserByEmail, logAudit } from '@/lib/store';
-import { signToken, buildCookieHeader } from '@/lib/auth';
+import { signToken, buildCookieHeader, signPreAuthToken } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
@@ -34,7 +34,8 @@ export async function POST(request: Request) {
     }
 
     if (user.twoFactorEnabled) {
-      return Response.json({ requires2FA: true, email: user.email });
+      const preAuthToken = await signPreAuthToken(user.email);
+      return Response.json({ requires2FA: true, preAuthToken });
     }
 
     const token = await signToken({ userId: user.id, role: user.role, organizationId: user.organizationId });

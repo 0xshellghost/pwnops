@@ -65,6 +65,24 @@ export async function verifyToken(token: string) {
   }
 }
 
+export async function signPreAuthToken(email: string): Promise<string> {
+  return new SignJWT({ email, type: 'pre-auth' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('5m')
+    .sign(jwtSecret);
+}
+
+export async function verifyPreAuthToken(token: string) {
+  try {
+    const { payload } = await jwtVerify(token, jwtSecret);
+    if (payload.type !== 'pre-auth') return null;
+    return payload.email as string;
+  } catch {
+    return null;
+  }
+}
+
 import { cookies } from 'next/headers';
 
 /** Extract auth user from request cookies — for use in Route Handlers */

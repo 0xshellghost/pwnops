@@ -15,7 +15,7 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [requires2FA, setRequires2FA] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState('');
-  const [twoFactorEmail, setTwoFactorEmail] = useState('');
+  const [preAuthToken, setPreAuthToken] = useState('');
   const searchParams = useSearchParams();
 
   // Display OAuth callback errors
@@ -39,7 +39,7 @@ function LoginContent() {
     setLoading(true);
     try {
       if (requires2FA) {
-        const res = await verify2FA(twoFactorEmail, twoFactorCode);
+        const res = await verify2FA(preAuthToken, twoFactorCode);
         if (res.ok) router.push('/dashboard');
         else void setError(res.error || 'Verification failed');
       } else {
@@ -47,7 +47,7 @@ function LoginContent() {
         if (res.ok) {
           if (res.requires2FA) {
             setRequires2FA(true);
-            setTwoFactorEmail(res.email!);
+            setPreAuthToken(res.preAuthToken!);
           } else {
             router.push('/dashboard');
           }
