@@ -54,6 +54,9 @@ export default function ScansPage() {
       const res = await fetch('/api/scans/tools');
       if (res.ok) {
         const d = await res.json();
+        if (d.error) {
+          setError(`Vercel connection error: ${d.error} - ${d.details} (URL: ${d.url})`);
+        }
         setTools(d.tools || []);
         // Auto-select first available tool
         const firstAvail = (d.tools || []).find((t: ToolInfo) => t.available);

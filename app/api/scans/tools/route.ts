@@ -22,11 +22,11 @@ export async function GET(request: Request) {
       if (res.ok) {
         tools = await res.json();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch tools from worker:', err);
+      return Response.json({ error: 'Worker fetch failed', details: err.message, url: workerUrl });
     }
   }
-
   // Fallback if worker is unreachable or URL is not set
   if (!tools || tools.length === 0) {
     tools = Object.entries(TOOL_REGISTRY).map(([name, tool]) => ({
