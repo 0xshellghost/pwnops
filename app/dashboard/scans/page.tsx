@@ -74,7 +74,7 @@ export default function ScansPage() {
     let ws: WebSocket | null = null;
     let reconnectTimeout: ReturnType<typeof setTimeout>;
 
-    const connect = () => {
+    const connect = async () => {
       try {
         if (wsUrl.startsWith('ws://') && window.location.protocol === 'https:') {
           console.warn('Skipping insecure WebSocket connection on HTTPS page. Falling back to polling.');
@@ -84,7 +84,16 @@ export default function ScansPage() {
           ws = { close: () => clearInterval(pollInterval) } as any;
           return;
         }
-        ws = new WebSocket(wsUrl);
+
+        // Fetch the WebSocket authentication key securely
+        const keyRes = await fetch('/api/scans/ws-key');
+        if (!keyRes.ok) return;
+        const { key } = await keyRes.json();
+        
+        // Connect to WebSocket with the auth key
+        const fullWsUrl = key ? `${wsUrl}?key=${key}` : wsUrl;
+        ws = new WebSocket(fullWsUrl);
+        
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
@@ -113,7 +122,7 @@ export default function ScansPage() {
       }
     };
 
-    connect();
+    void connect();
 
     return () => {
       clearTimeout(reconnectTimeout);
