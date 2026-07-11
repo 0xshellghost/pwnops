@@ -1,0 +1,30 @@
+# Dependencies (rebuilt inside container)
+node_modules
+
+# Environment files (secrets!)
+.env
+.env.*
+
+# Git metadata
+.git
+.gitignore
+
+# Next.js build output
+.next
+out
+
+# IDE / Editor
+.vscode
+.idea
+
+# Test artifacts
+test-results
+playwright-report
+coverage
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Gemini agent data
+.agents

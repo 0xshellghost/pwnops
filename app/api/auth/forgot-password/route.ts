@@ -25,8 +25,12 @@ export async function POST(request: Request) {
       },
     });
 
-    // Mock sending email
-    console.log(`[EMAIL MOCK] Password reset link for ${email}: http://localhost:3000/reset-password?token=${token}`);
+    // TODO: Integrate a real email provider (Resend, SendGrid, etc.)
+    // For now, this endpoint generates and stores the token but does not send it.
+    // In development, log the token for testing purposes only.
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[DEV ONLY] Password reset token for ${email}: ${token}`);
+    }
 
     return NextResponse.json({ success: true, message: 'If the email exists, a reset link was sent.' });
   } catch (error) {

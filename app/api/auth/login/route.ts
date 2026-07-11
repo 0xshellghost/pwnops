@@ -2,13 +2,10 @@
 // PwnOps — Login API
 // ──────────────────────────────────────────────────────────
 import bcrypt from 'bcryptjs';
-import { findUserByEmail, seedIfEmpty, logAudit } from '@/lib/store';
+import { findUserByEmail, logAudit } from '@/lib/store';
 import { signToken, buildCookieHeader } from '@/lib/auth';
 
 export async function POST(request: Request) {
-  // Seed once on first login attempt (transitional for demo environments)
-  await seedIfEmpty();
-
   try {
     const body = await request.json();
     const { email, password } = body;

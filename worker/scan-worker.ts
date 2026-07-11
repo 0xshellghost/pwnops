@@ -29,7 +29,10 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
@@ -40,11 +43,17 @@ let totalProcessed = 0;
 
 let wss: WebSocketServer | null = null;
 
-function broadcastScanUpdate(scanId: string, status: string, progress: number, results: unknown) {
+// Track org membership per WebSocket connection for scoped broadcasts
+const wsOrgMap = new WeakMap<WebSocket, string>();
+
+function broadcastScanUpdate(scanId: string, status: string, progress: number, results: unknown, organizationId?: string) {
   if (!wss) return;
   const msg = JSON.stringify({ type: 'SCAN_UPDATE', scanId, status, progress, results });
   wss.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
+      // If we know the org, only send to clients in the same org (or unscoped clients)
+      const clientOrg = wsOrgMap.get(client);
+      if (organizationId && clientOrg && clientOrg !== organizationId) return;
       client.send(msg);
     }
   });
@@ -120,7 +129,7 @@ async function pollForScans() {
 
     if (!scan) return; // No work to do
 
-    broadcastScanUpdate(scan.id, 'running', 5, `[*] Claimed by ${WORKER_ID}`);
+    broadcastScanUpdate(scan.id, 'running', 5, `[*] Claimed by ${WORKER_ID}`, scan.organizationId);
 
     // Process the scan asynchronously
     activeScanCount++;
@@ -157,7 +166,7 @@ async function processScan(scan: {
           completedAt: new Date(),
         },
       });
-      broadcastScanUpdate(id, 'failed', 100, `[!] Unknown or unavailable tool: ${toolName}`);
+      broadcastScanUpdate(id, 'failed', 100, `[!] Unknown or unavailable tool: ${toolName}`, organizationId);
       return;
     }
 
@@ -171,7 +180,7 @@ async function processScan(scan: {
           completedAt: new Date(),
         },
       });
-      broadcastScanUpdate(id, 'failed', 100, `[!] Invalid or blocked target: ${target}`);
+      broadcastScanUpdate(id, 'failed', 100, `[!] Invalid or blocked target: ${target}`, organizationId);
       return;
     }
 
@@ -180,7 +189,7 @@ async function processScan(scan: {
       where: { id },
       data: { progress: 10, results: `[*] Initializing ${toolName} scan against ${target}...` },
     });
-    broadcastScanUpdate(id, 'running', 10, `[*] Initializing ${toolName} scan against ${target}...`);
+    broadcastScanUpdate(id, 'running', 10, `[*] Initializing ${toolName} scan against ${target}...`, organizationId);
 
     // Start a simulated progress interval to keep the UI moving
     let currentProgress = 10;
@@ -193,7 +202,7 @@ async function processScan(scan: {
             where: { id },
             data: { progress: currentProgress },
           });
-          broadcastScanUpdate(id, 'running', currentProgress, null);
+          broadcastScanUpdate(id, 'running', currentProgress, null, organizationId);
         } catch { /* ignore */ }
       }
     }, 5000); // Update DB every 5 seconds
@@ -250,7 +259,7 @@ async function processScan(scan: {
         completedAt: new Date(),
       },
     });
-    broadcastScanUpdate(id, finalStatus, 100, structuredResults);
+    broadcastScanUpdate(id, finalStatus, 100, structuredResults, organizationId);
 
     // Fire off enterprise webhook alert
     await sendWebhookAlert(toolName, target, diffAlert, result.success, organizationId).catch(() => {});
@@ -273,7 +282,7 @@ async function processScan(scan: {
           completedAt: new Date(),
         },
       });
-      broadcastScanUpdate(id, 'failed', 100, `[!] Scan execution crashed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      broadcastScanUpdate(id, 'failed', 100, `[!] Scan execution crashed: ${err instanceof Error ? err.message : 'Unknown error'}`, organizationId);
     } catch {
       // Can't even update the DB — log and move on
     }
@@ -378,8 +387,8 @@ async function sendWebhookAlert(toolName: string, target: string, diffAlert: str
 // a worker crashed or was forcefully restarted.
 async function cleanZombieScans() {
   try {
-    // 15 minutes ago (longer than our longest 10 min timeout)
-    const staleThreshold = new Date(Date.now() - 15 * 60 * 1000);
+    // 20 minutes ago (longer than our longest 15 min nuclei timeout)
+    const staleThreshold = new Date(Date.now() - 20 * 60 * 1000);
     
     const zombies = await prisma.scan.updateMany({
       where: {
@@ -401,6 +410,19 @@ async function cleanZombieScans() {
     }
   } catch (err) {
     console.error(`[${WORKER_ID}] Failed to clean zombies:`, err);
+  }
+}
+
+async function cleanExpiredTokens() {
+  try {
+    const result = await prisma.passwordResetToken.deleteMany({
+      where: { expiresAt: { lt: new Date() } },
+    });
+    if (result.count > 0) {
+      console.log(`[${WORKER_ID}] 🧹 Cleaned up ${result.count} expired password reset token(s)`);
+    }
+  } catch (err) {
+    console.error(`[${WORKER_ID}] Failed to clean expired tokens:`, err);
   }
 }
 
@@ -436,35 +458,60 @@ function printBanner() {
 }
 
 async function start() {
-  // ── Render Free Tier Hack ──
-  // Start a dummy HTTP server so Render thinks this is a healthy "Web Service"
   const port = process.env.PORT || 10000;
   const workerApiKey = process.env.WORKER_API_KEY;
 
-  const server = createServer((req, res) => {
-    if (req.url === '/tools' && req.method === 'GET') {
-      // Require API key if configured
-      if (workerApiKey) {
-        const authHeader = req.headers['x-api-key'] || req.headers['authorization'];
-        const providedKey = typeof authHeader === 'string' ? authHeader.replace('Bearer ', '') : '';
-        if (providedKey !== workerApiKey) {
-          res.writeHead(401, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Unauthorized' }));
-          return;
-        }
-      }
+  // ── Auth Middleware ──
+  // All endpoints except GET / (health check) require API key
+  function isAuthenticated(req: import('http').IncomingMessage): boolean {
+    if (!workerApiKey) return true; // No key configured = open (dev mode)
+    const authHeader = req.headers['x-api-key'] || req.headers['authorization'];
+    const providedKey = typeof authHeader === 'string' ? authHeader.replace('Bearer ', '') : '';
+    return providedKey === workerApiKey;
+  }
 
+  const server = createServer((req, res) => {
+    // Health check — unauthenticated (needed for Docker/load balancer health probes)
+    if (req.url === '/' && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'healthy', worker: WORKER_ID }));
+      return;
+    }
+
+    // All other endpoints require API key
+    if (!isAuthenticated(req)) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return;
+    }
+
+    if (req.url === '/tools' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(getAvailableTools()));
       return;
     }
 
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('PwnOps Scan Worker is healthy!\n');
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Not found' }));
   });
 
+  // ── WebSocket with Authentication ──
   wss = new WebSocketServer({ server });
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, req) => {
+    // Authenticate via query param: ws://host:port?key=YOUR_API_KEY
+    if (workerApiKey) {
+      const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+      const providedKey = url.searchParams.get('key') || '';
+      if (providedKey !== workerApiKey) {
+        ws.close(1008, 'Unauthorized');
+        return;
+      }
+    }
+    // Optionally track organization for scoped broadcasts
+    // (org can be sent as a query param: ?key=...&org=orgId)
+    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const orgId = url.searchParams.get('org');
+    if (orgId) wsOrgMap.set(ws, orgId);
     ws.on('error', console.error);
   });
 
@@ -493,6 +540,7 @@ async function start() {
   const interval = setInterval(pollForScans, POLL_INTERVAL_MS);
   const watchdogInterval = setInterval(cleanZombieScans, 60_000); // Check every minute
   const schedulerInterval = setInterval(processScheduledScans, 10_000); // Check schedules every 10s
+  const tokenCleanupInterval = setInterval(cleanExpiredTokens, 60 * 60 * 1000); // Clean expired tokens every hour
 
   // Graceful shutdown
   const shutdown = async (signal: string) => {
@@ -502,6 +550,7 @@ async function start() {
     clearInterval(interval);
     clearInterval(watchdogInterval);
     clearInterval(schedulerInterval);
+    clearInterval(tokenCleanupInterval);
 
     // Wait for active scans to finish (max 30s)
     const maxWait = Date.now() + 30_000;

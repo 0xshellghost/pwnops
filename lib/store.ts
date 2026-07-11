@@ -10,7 +10,12 @@ const createPrismaClient = () => {
   if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL is not set');
   }
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    // Accept Supabase's pooler certificate without requiring NODE_TLS_REJECT_UNAUTHORIZED=0
+    // This keeps TLS verification enabled for all other outgoing connections (webhooks, scans, etc.)
+    ssl: { rejectUnauthorized: false },
+  });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 };
@@ -155,11 +160,10 @@ export async function addScan(s: Omit<Scan, 'id'>) {
   });
 }
 export async function updateScan(id: string, update: Partial<Pick<Scan, 'progress' | 'status' | 'results' | 'completedAt'>>, organizationId?: string) {
-  // If organizationId is provided, verify the scan belongs to that org
-  if (organizationId) {
-    const scan = await prisma.scan.findUnique({ where: { id } });
-    if (!scan || scan.organizationId !== organizationId) return null;
-  }
+  // Always verify ownership when orgId is available
+  const scan = await prisma.scan.findUnique({ where: { id } });
+  if (!scan) return null;
+  if (organizationId && scan.organizationId !== organizationId) return null;
   return prisma.scan.update({ where: { id }, data: { ...update, results: update.results ? (update.results as any) : undefined } });
 }
 
@@ -268,10 +272,30 @@ export async function logAudit(entry: {
   }
 }
 
-export async function getAuditLogs(organizationId: string, limit = 50) {
-  return prisma.auditLog.findMany({
-    where: { organizationId },
-    orderBy: { timestamp: 'desc' },
-    take: limit,
-  });
+export async function getAuditLogs(organizationId: string, page = 1, limit = 50) {
+  const skip = (page - 1) * limit;
+  const [data, total] = await Promise.all([
+    prisma.auditLog.findMany({
+      where: { organizationId },
+      orderBy: { timestamp: 'desc' },
+      skip,
+      take: limit,
+    }),
+    prisma.auditLog.count({ where: { organizationId } }),
+  ]);
+  return { data, total, page, totalPages: Math.ceil(total / limit) };
+}
+
+/** Clean up expired password reset tokens */
+export async function cleanExpiredTokens() {
+  try {
+    const result = await prisma.passwordResetToken.deleteMany({
+      where: { expiresAt: { lt: new Date() } },
+    });
+    if (result.count > 0) {
+      console.log(`[Cleanup] Deleted ${result.count} expired password reset token(s)`);
+    }
+  } catch (err) {
+    console.error('Failed to clean expired tokens:', err);
+  }
 }

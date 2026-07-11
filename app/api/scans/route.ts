@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const page = parseInt(url.searchParams.get('page') || '1', 10);
-  const limit = parseInt(url.searchParams.get('limit') || '50', 10);
+  const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10), 100);
 
   const result = await getScans(user.organizationId, page, limit);
   const threatFeed = await getThreatFeed(user.organizationId);
