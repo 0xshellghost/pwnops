@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
         name: googleUser.name || 'Google User',
         email: primaryEmail,
         passwordHash: '!OAUTH_NO_PASSWORD!', // Sentinel — blocks password login
-        role: 'analyst',
+        role: 'admin',
       };
       user = await addUser(newUserObj);
     }
