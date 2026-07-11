@@ -1,4 +1,10 @@
 import Link from 'next/link';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'API Reference',
+  description: 'PwnOps API documentation. Integrate automated security into your CI/CD pipelines.',
+};
 
 export default function ApiDocsPage() {
   return (

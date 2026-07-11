@@ -29,7 +29,7 @@ export default function LandingPage() {
             <span className="text-accent-cyan font-bold text-xl tracking-tight" style={{ fontFamily: 'var(--font-mono)' }}>
               PwnOps
             </span>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-accent-cyan ml-0.5">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-accent-cyan ml-0.5" aria-hidden="true">
               <path d="M3 3h7v7H3V3zm11 0h7v7h-7V3zm0 11h7v7h-7v-7zM3 14h7v7H3v-7z" stroke="currentColor" strokeWidth="1.5"/>
             </svg>
           </div>
@@ -59,7 +59,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row gap-3">
             <Link href="/register" className="btn-primary text-sm">
               Deploy Now
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
                 <path d="M12 2L12 16M12 16L7 11M12 16L17 11" />
                 <path d="M4 22h16" />
               </svg>
@@ -82,7 +82,7 @@ export default function LandingPage() {
         <div className="flex flex-col gap-4 stagger">
           <div className="feature-card">
             <div className="text-accent-cyan mb-2">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 6v6l4 2" />
               </svg>
@@ -96,7 +96,7 @@ export default function LandingPage() {
 
           <div className="feature-card">
             <div className="text-accent-orange mb-2">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
               </svg>
             </div>
@@ -109,7 +109,7 @@ export default function LandingPage() {
 
           <div className="feature-card">
             <div className="text-accent-green mb-2">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
                 <rect x="2" y="3" width="20" height="14" rx="2" />
                 <path d="M8 21h8M12 17v4" />
               </svg>
@@ -184,13 +184,13 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto w-full px-5 py-8">
           <div className="flex items-center justify-center gap-4 mb-4 text-text-muted text-xs" style={{ fontFamily: 'var(--font-mono)' }}>
             <span className="flex items-center gap-1">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
               Security First
             </span>
             <span className="flex items-center gap-1">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <rect x="3" y="11" width="18" height="11" rx="2" />
                 <path d="M7 11V7a5 5 0 0110 0v4" />
               </svg>

@@ -1,4 +1,10 @@
 import Link from 'next/link';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Documentation',
+  description: 'Learn how to use PwnOps, the enterprise-grade automated defense platform for cloud-native environments.',
+};
 
 export default function DocsPage() {
   return (
