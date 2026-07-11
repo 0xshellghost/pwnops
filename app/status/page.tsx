@@ -10,8 +10,13 @@ export default function StatusPage() {
     // Simulated status check
     const checkStatus = async () => {
       try {
-        const res = await fetch('/api/scans/tools');
-        setStatus(res.ok ? 'online' : 'degraded');
+        const res = await fetch('/api/health');
+        if (res.ok) {
+          const data = await res.json();
+          setStatus(data.status === 'online' ? 'online' : 'degraded');
+        } else {
+          setStatus('degraded');
+        }
       } catch {
         setStatus('degraded');
       }

@@ -43,9 +43,9 @@ export default function SupportPage() {
             </div>
             <h3 className="text-xl font-bold mb-2">Direct Contact</h3>
             <p className="text-text-muted mb-6 text-sm">
-              Reach out directly to Lavay Garg and the core PwnOps engineering team.
+              Reach out directly to Lavay Garg.
             </p>
-            <a href="mailto:support@pwnops.com" className="btn-primary w-full text-center block">
+            <a href="mailto:garglavay@gmail.com" className="btn-primary w-full text-center block">
               Email Support
             </a>
           </div>
