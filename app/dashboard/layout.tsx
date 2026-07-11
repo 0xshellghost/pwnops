@@ -115,6 +115,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
   const [isOffline, setIsOffline] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Load sidebar collapse state from localStorage
   useEffect(() => {
@@ -167,6 +168,55 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       {isOffline && (
         <div className="bg-accent-amber text-bg-primary text-center text-xs font-bold py-1.5 animate-pulse-slow z-60 relative">
           ⚠️ You are currently offline. Some features may be unavailable.
+        </div>
+      )}
+
+      {/* ── Mobile Menu Overlay ── */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 bg-bg-primary/95 backdrop-blur-md lg:hidden flex flex-col animate-fade-in">
+          <div className="flex items-center justify-between p-4 border-b border-border">
+            <div className="flex items-center gap-3">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-accent-cyan">
+                <path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill="currentColor" opacity="0.2" stroke="currentColor" strokeWidth="1.5"/>
+              </svg>
+              <span className="text-accent-cyan font-bold text-lg" style={{ fontFamily: 'var(--font-mono)' }}>Menu</span>
+            </div>
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-1.5 text-text-muted hover:text-accent-red transition-colors"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24">
+            {NAV_SECTIONS.map(section => (
+              <div key={section.title}>
+                <div className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2" style={{ fontFamily: 'var(--font-mono)' }}>
+                  {section.title}
+                </div>
+                <div className="space-y-1">
+                  {section.items.map(item => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                        isActive(pathname, item.href) 
+                          ? 'bg-bg-input text-accent-cyan border border-border shadow-[inset_0_2px_6px_rgba(0,0,0,0.4)]' 
+                          : 'text-text-secondary hover:bg-bg-surface'
+                      }`}
+                    >
+                      {item.icon}
+                      <span className="font-medium text-sm">{item.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -230,7 +280,18 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         <div className="max-w-90rem mx-auto flex items-center justify-between w-full">
           {/* Mobile: show brand. Desktop: show breadcrumbs */}
           <div className="flex items-center gap-3 lg:hidden">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-accent-cyan">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-1.5 -ml-1.5 text-text-muted hover:text-accent-cyan transition-colors"
+              aria-label="Open menu"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-accent-cyan hidden sm:block">
               <path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill="currentColor" opacity="0.2" stroke="currentColor" strokeWidth="1.5"/>
             </svg>
             <span className="text-accent-cyan font-bold text-lg" style={{ fontFamily: 'var(--font-mono)' }}>PwnOps</span>
