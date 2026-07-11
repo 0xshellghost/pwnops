@@ -584,7 +584,7 @@ function parseTestsslJson(raw: string): string {
     lines.push('[*] SSL/TLS Audit Report');
     lines.push('────────────────────────────────────────');
 
-    const grouped: Record<string, Array<{ id: string; finding: string; severity: string }>> = {};
+    const grouped: Record<string, Array<{ id: string; finding: string; severity: string; cve: string; cwe: string }>> = {};
 
     for (const entry of entries) {
       const section = entry.section || 'General';
@@ -593,6 +593,8 @@ function parseTestsslJson(raw: string): string {
         id: entry.id || '',
         finding: entry.finding || '',
         severity: entry.severity || 'INFO',
+        cve: entry.cve || '',
+        cwe: entry.cwe || ''
       });
     }
 
@@ -606,7 +608,9 @@ function parseTestsslJson(raw: string): string {
                      f.severity === 'HIGH' ? '✗✗' :
                      f.severity === 'CRITICAL' ? '✗✗✗' : '?';
         const idDisplay = f.id ? `${f.id.padEnd(30)} ` : '';
-        lines.push(`  ${icon} [${f.severity.padEnd(8)}] ${idDisplay}${f.finding}`);
+        const tags = [f.cve, f.cwe].filter(Boolean).join(', ');
+        const tagDisplay = tags ? ` [${tags}]` : '';
+        lines.push(`  ${icon} [${f.severity.padEnd(8)}] ${idDisplay}${f.finding}${tagDisplay}`);
       }
     }
 
@@ -727,13 +731,16 @@ function parseNucleiJson(raw: string): string {
       const sev = (data.info?.severity || 'info').toUpperCase();
       const name = data.info?.name || 'Unknown';
       const url = data.matched_at || '';
+      const cveField = data.info?.classification?.['cve-id'];
+      const cves = Array.isArray(cveField) ? cveField.join(', ') : (cveField || '');
       
       let icon = 'ℹ';
       if (sev === 'CRITICAL') { icon = '✗✗✗'; crit++; }
       else if (sev === 'HIGH') { icon = '✗✗'; high++; }
       else if (sev === 'MEDIUM') { icon = '✗'; med++; }
 
-      lines.push(`  ${icon} [${sev.padEnd(8)}] ${name}`);
+      const cveDisplay = cves ? ` [${cves}]` : '';
+      lines.push(`  ${icon} [${sev.padEnd(8)}] ${name}${cveDisplay}`);
       lines.push(`      Target: ${url}`);
     } catch {
        lines.push(`  ? ${line}`);
