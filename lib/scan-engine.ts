@@ -605,7 +605,8 @@ function parseTestsslJson(raw: string): string {
                      f.severity === 'MEDIUM' ? '✗' :
                      f.severity === 'HIGH' ? '✗✗' :
                      f.severity === 'CRITICAL' ? '✗✗✗' : '?';
-        lines.push(`  ${icon} [${f.severity.padEnd(8)}] ${f.finding}`);
+        const idDisplay = f.id ? `${f.id.padEnd(30)} ` : '';
+        lines.push(`  ${icon} [${f.severity.padEnd(8)}] ${idDisplay}${f.finding}`);
       }
     }
 

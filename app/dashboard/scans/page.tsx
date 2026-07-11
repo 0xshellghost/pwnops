@@ -68,6 +68,20 @@ export default function ScansPage() {
 
   useEffect(() => { void fetchScans(); void fetchTools(); }, [fetchScans, fetchTools]);
 
+  // Fallback polling: if there are active scans and WS is disconnected/failing,
+  // we ensure updates by polling every 3 seconds. If WS works, it updates `scans`
+  // which resets this interval, acting as a debounced fallback.
+  useEffect(() => {
+    const hasActiveScans = scans.some(s => s.status === 'running' || s.status === 'queued');
+    if (!hasActiveScans) return;
+
+    const intervalId = setInterval(() => {
+      void fetchScans();
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [scans, fetchScans]);
+
   // WebSocket for real-time updates
   useEffect(() => {
     const wsUrl = process.env.NEXT_PUBLIC_WORKER_WS_URL || 'ws://localhost:10000';
