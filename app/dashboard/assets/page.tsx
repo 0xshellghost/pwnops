@@ -59,7 +59,7 @@ export default function AssetsPage() {
   };
 
   return (
-    <div className="animate-fade-in space-y-6">
+    <div className="space-y-6">
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-2xl font-bold">Asset Inventory</h1>
@@ -127,8 +127,8 @@ export default function AssetsPage() {
       </div>
 
       {showAdd && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="card-glass w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-start justify-center p-4 pt-16 overflow-y-auto animate-fade-in">
+          <div className="card-glass w-full max-w-md p-6 mb-16">
             <h2 className="text-xl font-bold mb-4">Add Asset</h2>
             <form onSubmit={handleAdd} className="space-y-4">
               <div>
