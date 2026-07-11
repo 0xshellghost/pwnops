@@ -292,16 +292,22 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
       '-u', target,
       '-json-export', outputFile, // Write output to file
       '-silent',
-      '-severity', 'critical,high,medium' // Focus on important findings
+      '-severity', 'critical,high,medium', // Focus on important findings
+      '-rate-limit', '50',        // Max 50 requests/sec (prevent RAM spike)
+      '-concurrency', '10',       // Max 10 templates in parallel
+      '-timeout', '10',           // Per-request timeout in seconds
     ],
     parseOutput: async (_stdout, _stderr, outputFile) => {
       if (!outputFile || !existsSync(outputFile)) {
-        return '[!] Nuclei did not produce output';
+        return '[!] Nuclei did not produce output — target may have no vulnerabilities at the selected severity levels.';
       }
       const raw = await readFile(outputFile, 'utf-8');
+      if (!raw.trim()) {
+        return '[✓] Nuclei scan completed — no critical, high, or medium vulnerabilities found.';
+      }
       return parseNucleiJson(raw);
     },
-    timeoutMs: 600_000,
+    timeoutMs: 900_000, // 15 minutes — nuclei needs time on low-memory instances
     usesOutputFile: true,
   },
 
