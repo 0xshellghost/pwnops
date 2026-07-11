@@ -56,6 +56,15 @@ export interface ScanResult {
     [key: string]: string | boolean | number | undefined;
   };
   raw?: string;
+  vulnerabilities?: Array<{
+    cveId: string;
+    version: string;
+    title: string;
+    description: string;
+    severity: string;
+    cvssScore: number;
+    affectedAsset: string;
+  }>;
 }
 
 export interface Scan {

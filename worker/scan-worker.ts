@@ -238,6 +238,34 @@ async function processScan(scan: {
     const finalStatus = result.success ? 'completed' : 'failed';
     const finalResultsRaw = formatFinalOutput(result, toolName, target, diffAlert);
     
+    // Process extracted vulnerabilities
+    if (result.vulnerabilities && result.vulnerabilities.length > 0) {
+      for (const v of result.vulnerabilities) {
+        try {
+          const existing = await prisma.vulnerability.findFirst({
+            where: { cveId: v.cveId, affectedAsset: v.affectedAsset, organizationId }
+          });
+          if (!existing) {
+            await prisma.vulnerability.create({
+              data: {
+                cveId: String(v.cveId).substring(0, 50),
+                version: String(v.version).substring(0, 50),
+                title: String(v.title).substring(0, 200),
+                description: String(v.description).substring(0, 1000),
+                severity: v.severity,
+                cvssScore: Number(v.cvssScore) || 5.0,
+                affectedAsset: String(v.affectedAsset).substring(0, 100),
+                status: 'open',
+                organizationId
+              }
+            });
+          }
+        } catch (err) {
+          console.error('[!] Failed to insert vulnerability:', err);
+        }
+      }
+    }
+    
     const structuredResults = {
       raw: finalResultsRaw,
       summary: {

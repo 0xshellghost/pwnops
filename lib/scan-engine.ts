@@ -20,6 +20,21 @@ import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { resolve4 } from 'dns/promises';
 
+export interface ExtractedVulnerability {
+  cveId: string;
+  version: string;
+  title: string;
+  description: string;
+  severity: 'critical' | 'high' | 'medium' | 'low' | 'info';
+  cvssScore: number;
+  affectedAsset: string;
+}
+
+export interface ParsedOutput {
+  formatted: string;
+  vulnerabilities: ExtractedVulnerability[];
+}
+
 const execFileAsync = promisify(execFile);
 
 // ── Tool Registry ────────────────────────────────────────
@@ -37,7 +52,7 @@ export interface ToolDefinition {
   /** Build the argument array from a validated target */
   buildArgs: (target: string, outputFile: string) => string[];
   /** Parse raw tool output into a structured report string */
-  parseOutput: (stdout: string, stderr: string, outputFile: string | null) => Promise<string>;
+  parseOutput: (stdout: string, stderr: string, outputFile: string | null, target: string) => Promise<ParsedOutput>;
   /** Max execution time in milliseconds */
   timeoutMs: number;
   /** Whether this tool produces a separate output file (e.g. nmap -oX) */
@@ -180,12 +195,12 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
       '--host-timeout', '240s',
       target,
     ],
-    parseOutput: async (_stdout, _stderr, outputFile) => {
+    parseOutput: async (_stdout, _stderr, outputFile, target) => {
       if (!outputFile || !existsSync(outputFile)) {
-        return '[!] Nmap did not produce output';
+        return { formatted: '[!] Nmap did not produce output', vulnerabilities: [] };
       }
       const xml = await readFile(outputFile, 'utf-8');
-      return parseNmapXml(xml);
+      return { formatted: parseNmapXml(xml), vulnerabilities: [] };
     },
     timeoutMs: 300_000, // 5 minutes
     usesOutputFile: true,
@@ -203,12 +218,12 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
       '-oX', outputFile,
       target,
     ],
-    parseOutput: async (_stdout, _stderr, outputFile) => {
+    parseOutput: async (_stdout, _stderr, outputFile, target) => {
       if (!outputFile || !existsSync(outputFile)) {
-        return '[!] Nmap recon did not produce output';
+        return { formatted: '[!] Nmap recon did not produce output', vulnerabilities: [] };
       }
       const xml = await readFile(outputFile, 'utf-8');
-      return parseNmapReconXml(xml);
+      return { formatted: parseNmapReconXml(xml), vulnerabilities: [] };
     },
     timeoutMs: 120_000, // 2 minutes
     usesOutputFile: true,
@@ -227,16 +242,16 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
       '--color', '0',
       target,
     ],
-    parseOutput: async (stdout, _stderr, outputFile) => {
+    parseOutput: async (stdout, _stderr, outputFile, target) => {
       if (outputFile && existsSync(outputFile)) {
         try {
           const raw = await readFile(outputFile, 'utf-8');
-          return parseTestsslJson(raw);
+          return parseTestsslJson(raw, target);
         } catch {
           // Fall through to stdout
         }
       }
-      return formatTestsslStdout(stdout);
+      return { formatted: formatTestsslStdout(stdout), vulnerabilities: [] };
     },
     timeoutMs: 600_000, // 10 minutes
     usesOutputFile: true,
@@ -254,9 +269,10 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
       '--pentest',          // Non-privileged scan mode
       '--tests-from-group', 'authentication,networking,crypto,storage',
     ],
-    parseOutput: async (stdout) => {
-      return parseLynisOutput(stdout);
-    },
+    parseOutput: async (stdout, _stderr, _out, target) => ({
+      formatted: parseLynisOutput(stdout),
+      vulnerabilities: []
+    }),
     timeoutMs: 300_000,
     usesOutputFile: false,
   },
@@ -272,12 +288,12 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
       '-o', outputFile,
       '-silent' // Only output results, no banner
     ],
-    parseOutput: async (_stdout, _stderr, outputFile) => {
+    parseOutput: async (_stdout, _stderr, outputFile, target) => {
       if (!outputFile || !existsSync(outputFile)) {
-        return '[!] Subfinder did not produce output';
+        return { formatted: '[!] Subfinder did not produce output', vulnerabilities: [] };
       }
       const raw = await readFile(outputFile, 'utf-8');
-      return parseSubfinderJson(raw);
+      return { formatted: parseSubfinderJson(raw), vulnerabilities: [] };
     },
     timeoutMs: 300_000,
     usesOutputFile: true,
@@ -297,15 +313,15 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
       '-concurrency', '10',       // Max 10 templates in parallel
       '-timeout', '10',           // Per-request timeout in seconds
     ],
-    parseOutput: async (_stdout, _stderr, outputFile) => {
+    parseOutput: async (_stdout, _stderr, outputFile, target) => {
       if (!outputFile || !existsSync(outputFile)) {
-        return '[!] Nuclei did not produce output — target may have no vulnerabilities at the selected severity levels.';
+        return { formatted: '[!] Nuclei did not produce output — target may have no vulnerabilities at the selected severity levels.', vulnerabilities: [] };
       }
       const raw = await readFile(outputFile, 'utf-8');
       if (!raw.trim()) {
-        return '[✓] Nuclei scan completed — no critical, high, or medium vulnerabilities found.';
+        return { formatted: '[✓] Nuclei scan completed — no critical, high, or medium vulnerabilities found.', vulnerabilities: [] };
       }
-      return parseNucleiJson(raw);
+      return parseNucleiJson(raw, target);
     },
     timeoutMs: 900_000, // 15 minutes — nuclei needs time on low-memory instances
     usesOutputFile: true,
@@ -320,8 +336,8 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
       target,
       '--color=NEVER'
     ],
-    parseOutput: async (stdout) => {
-      return `[*] WhatWeb Tech Stack Detection\n────────────────────────────────────────\n  ${stdout.trim()}`;
+    parseOutput: async (stdout, _stderr, _out, target) => {
+      return { formatted: `[*] WhatWeb Tech Stack Detection\n────────────────────────────────────────\n  ${stdout.trim()}`, vulnerabilities: [] };
     },
     timeoutMs: 120_000,
     usesOutputFile: false,
@@ -333,6 +349,7 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
 export interface ScanResult {
   success: boolean;
   output: string;
+  vulnerabilities?: ExtractedVulnerability[];
   exitCode: number | null;
   executionTimeMs: number;
   toolVersion: string | null;
@@ -351,13 +368,13 @@ export async function executeScan(
   // 1. Validate tool
   const tool = TOOL_REGISTRY[toolName];
   if (!tool) {
-    return { success: false, output: `[!] Unknown tool: ${toolName}`, exitCode: null, executionTimeMs: 0, toolVersion: null };
+    return { success: false, output: `[!] Unknown tool: ${toolName}`, vulnerabilities: [], exitCode: null, executionTimeMs: 0, toolVersion: null };
   }
 
   // 2. Validate target
   const target = validateTarget(rawTarget);
   if (!target) {
-    return { success: false, output: `[!] Invalid or blocked target: ${rawTarget}`, exitCode: null, executionTimeMs: 0, toolVersion: null };
+    return { success: false, output: `[!] Invalid or blocked target: ${rawTarget}`, vulnerabilities: [], exitCode: null, executionTimeMs: 0, toolVersion: null };
   }
 
   // 3. Resolve binary
@@ -401,11 +418,12 @@ export async function executeScan(
       env: { ...process.env, PATH: '/usr/bin:/usr/local/bin:/usr/sbin:/opt/homebrew/bin' },
     });
 
-    const output = await tool.parseOutput(stdout, stderr, outputFile || null);
+    const parsed = await tool.parseOutput(stdout, stderr, outputFile || null, target);
 
     return {
       success: true,
-      output,
+      output: parsed.formatted,
+      vulnerabilities: parsed.vulnerabilities,
       exitCode: 0,
       executionTimeMs: Date.now() - startTime,
       toolVersion,
@@ -417,6 +435,7 @@ export async function executeScan(
       return {
         success: false,
         output: `[!] Scan timed out after ${tool.timeoutMs / 1000}s or exceeded output buffer`,
+      vulnerabilities: [],
         exitCode: null,
         executionTimeMs: Date.now() - startTime,
         toolVersion,
@@ -427,10 +446,11 @@ export async function executeScan(
     // Try to parse their output anyway
     if (execErr.stdout) {
       try {
-        const output = await tool.parseOutput(execErr.stdout, execErr.stderr || '', outputFile || null);
+        const parsed = await tool.parseOutput(execErr.stdout, execErr.stderr || '', outputFile || null, target);
         return {
           success: true,
-          output,
+          output: parsed.formatted,
+          vulnerabilities: parsed.vulnerabilities,
           exitCode: execErr.status || 1,
           executionTimeMs: Date.now() - startTime,
           toolVersion,
@@ -443,6 +463,7 @@ export async function executeScan(
     return {
       success: false,
       output: `[!] Scan failed: ${execErr.stderr || execErr.code || 'Unknown error'}`,
+      vulnerabilities: [],
       exitCode: execErr.status || null,
       executionTimeMs: Date.now() - startTime,
       toolVersion,
@@ -573,13 +594,14 @@ function parseNmapReconXml(xml: string): string {
 }
 
 /** Parse testssl.sh JSON output */
-function parseTestsslJson(raw: string): string {
+function parseTestsslJson(raw: string, target: string): ParsedOutput {
   const lines: string[] = [];
+  let vulnerabilities: ExtractedVulnerability[] = [];
 
   try {
     // testssl outputs JSON array
     const entries = JSON.parse(raw);
-    if (!Array.isArray(entries)) return formatRawOutput('testssl.sh', raw);
+    if (!Array.isArray(entries)) return { formatted: formatRawOutput('testssl.sh', raw), vulnerabilities: [] };
 
     lines.push('[*] SSL/TLS Audit Report');
     lines.push('────────────────────────────────────────');
@@ -611,6 +633,18 @@ function parseTestsslJson(raw: string): string {
         const tags = [f.cve, f.cwe].filter(Boolean).join(', ');
         const tagDisplay = tags ? ` [${tags}]` : '';
         lines.push(`  ${icon} [${f.severity.padEnd(8)}] ${idDisplay}${f.finding}${tagDisplay}`);
+
+        if (['HIGH', 'CRITICAL', 'MEDIUM'].includes(f.severity)) {
+          vulnerabilities.push({
+            cveId: f.cve || 'N/A',
+            version: 'N/A',
+            title: f.id || 'SSL/TLS Configuration Issue',
+            description: f.finding || '',
+            severity: f.severity.toLowerCase() as any,
+            cvssScore: f.severity === 'CRITICAL' ? 9.5 : (f.severity === 'HIGH' ? 7.5 : 5.0),
+            affectedAsset: target
+          });
+        }
       }
     }
 
@@ -622,10 +656,10 @@ function parseTestsslJson(raw: string): string {
     lines.push(`[+] ${critCount} critical/high, ${warnCount} warnings, ${entries.length} total findings`);
 
   } catch {
-    return formatRawOutput('testssl.sh', raw);
+    return { formatted: formatRawOutput('testssl.sh', raw), vulnerabilities: [] };
   }
 
-  return lines.join('\n');
+  return { formatted: lines.join('\n'), vulnerabilities };
 }
 
 /** Format testssl stdout when JSON parsing fails */
@@ -716,8 +750,9 @@ function parseSubfinderJson(raw: string): string {
 }
 
 /** Parse Nuclei JSON output */
-function parseNucleiJson(raw: string): string {
+function parseNucleiJson(raw: string, target: string): ParsedOutput {
   const lines: string[] = [];
+  const vulnerabilities: ExtractedVulnerability[] = [];
   lines.push('[*] Nuclei Vulnerability Scan');
   lines.push('────────────────────────────────────────');
 
@@ -749,7 +784,7 @@ function parseNucleiJson(raw: string): string {
 
   lines.push('────────────────────────────────────────');
   lines.push(`[+] ${crit} Critical, ${high} High, ${med} Medium findings`);
-  return lines.join('\n');
+  return { formatted: lines.join('\n'), vulnerabilities };
 }
 
 // ── Availability Check ───────────────────────────────────
