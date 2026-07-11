@@ -81,7 +81,7 @@ export default function IncidentsPage() {
       </div>
 
       {/* Actions */}
-      <div className="flex gap-3 mb-4">
+      <div className="flex flex-wrap gap-3 mb-4">
         <div className="relative">
           <button
             onClick={() => setShowFilterDropdown(!showFilterDropdown)}

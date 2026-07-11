@@ -96,7 +96,7 @@ export default function VulnerabilitiesPage() {
       </div>
 
       {/* Filter + Export */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-4">
         <select
           value={severityFilter}
           onChange={e => setSeverityFilter(e.target.value)}

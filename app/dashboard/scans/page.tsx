@@ -285,7 +285,7 @@ export default function ScansPage() {
             </div>
           )}
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex flex-col sm:flex-row gap-2 pt-2">
             <button onClick={launchScan}
               disabled={!canLaunch || launching || !target.trim() || !selectedTool || (!currentTool?.available && !isScheduled)}
               className="btn-primary flex-1 text-sm">

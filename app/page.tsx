@@ -56,7 +56,7 @@ export default function LandingPage() {
             automated scanner detects, prioritizes, and assists in the remediation of critical
             vulnerabilities across your entire attack surface.
           </p>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <Link href="/register" className="btn-primary text-sm">
               Deploy Now
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -125,7 +125,7 @@ export default function LandingPage() {
 
       {/* ─── Stats ───────────────────────────────────── */}
       <section className="px-5 py-8">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="stat-card text-center">
             <div className="text-2xl font-bold text-accent-cyan">99.9%</div>
             <div className="label-mono mt-1">Scan Accuracy</div>
