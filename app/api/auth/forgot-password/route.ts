@@ -25,11 +25,28 @@ export async function POST(request: Request) {
       },
     });
 
-    // TODO: Integrate a real email provider (Resend, SendGrid, etc.)
-    // For now, this endpoint generates and stores the token but does not send it.
-    // In development, log the token for testing purposes only.
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`[DEV ONLY] Password reset token for ${email}: ${token}`);
+    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
+
+    if (process.env.RESEND_API_KEY) {
+      const { Resend } = await import('resend');
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      
+      await resend.emails.send({
+        from: 'PwnOps Security <onboarding@resend.dev>',
+        to: email,
+        subject: 'Reset your PwnOps Password',
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>PwnOps Password Reset</h2>
+            <p>You requested a password reset for your PwnOps account.</p>
+            <p>Click the link below to securely reset your password. This link will expire in 15 minutes.</p>
+            <a href="${resetUrl}" style="display: inline-block; padding: 12px 24px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 4px; margin-top: 16px;">Reset Password</a>
+            <p style="margin-top: 32px; font-size: 12px; color: #666;">If you did not request this, please ignore this email.</p>
+          </div>
+        `
+      });
+    } else {
+      console.log(`[DEV ONLY] Resend API key missing. Password reset URL for ${email}:\n${resetUrl}`);
     }
 
     return NextResponse.json({ success: true, message: 'If the email exists, a reset link was sent.' });

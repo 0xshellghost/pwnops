@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    env_file:
+      - .env
+    restart: always
+    # We no longer expose port 10000 directly to the host
+    # Caddy will route external traffic to this container internally
+
+  caddy:
+    image: caddy:2.7.6-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - worker
+
+volumes:
+  caddy_data:
+  caddy_config:
