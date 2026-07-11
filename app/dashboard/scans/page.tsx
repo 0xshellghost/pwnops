@@ -142,7 +142,7 @@ export default function ScansPage() {
       clearTimeout(reconnectTimeout);
       if (ws) ws.close();
     };
-  }, []);
+  }, [fetchScans]);
 
   const launchScan = async () => {
     if (!target.trim() || !selectedTool) return;

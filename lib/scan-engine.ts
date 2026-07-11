@@ -596,7 +596,7 @@ function parseNmapReconXml(xml: string): string {
 /** Parse testssl.sh JSON output */
 function parseTestsslJson(raw: string, target: string): ParsedOutput {
   const lines: string[] = [];
-  let vulnerabilities: ExtractedVulnerability[] = [];
+  const vulnerabilities: ExtractedVulnerability[] = [];
 
   try {
     // testssl outputs JSON array

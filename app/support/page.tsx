@@ -36,10 +36,10 @@ export default function SupportPage() {
           24/7 ENCRYPTED SUPPORT
         </div>
         <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tight leading-tight">
-          We've Got Your <span className="text-transparent bg-clip-text bg-linear-to-r from-accent-cyan to-accent-blue">Back.</span>
+          We&apos;ve Got Your <span className="text-transparent bg-clip-text bg-linear-to-r from-accent-cyan to-accent-blue">Back.</span>
         </h1>
         <p className="text-lg md:text-xl text-text-muted mb-12 max-w-2xl leading-relaxed">
-          Whether you're dealing with a configuration issue or a critical vulnerability, the PwnOps support team is here to assist.
+          Whether you&apos;re dealing with a configuration issue or a critical vulnerability, the PwnOps support team is here to assist.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left">

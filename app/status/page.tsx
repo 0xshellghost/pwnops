@@ -4,24 +4,57 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 export default function StatusPage() {
-  const [status, setStatus] = useState<'checking' | 'online' | 'degraded'>('checking');
+  const [statuses, setStatuses] = useState<{
+    frontend: 'checking' | 'online' | 'degraded';
+    database: 'checking' | 'online' | 'degraded';
+    worker: 'checking' | 'online' | 'degraded';
+    websocket: 'checking' | 'online' | 'degraded';
+  }>({
+    frontend: 'checking',
+    database: 'checking',
+    worker: 'checking',
+    websocket: 'checking'
+  });
+
+  const [globalStatus, setGlobalStatus] = useState<'checking' | 'online' | 'degraded'>('checking');
 
   useEffect(() => {
+    let mounted = true;
+
     // Simulated status check
     const checkStatus = async () => {
       try {
         const res = await fetch('/api/health');
         if (res.ok) {
           const data = await res.json();
-          setStatus(data.status === 'online' ? 'online' : 'degraded');
+          if (mounted) {
+            setStatuses({
+              frontend: data.frontend || 'degraded',
+              database: data.database || 'degraded',
+              worker: data.worker || 'degraded',
+              websocket: data.websocket || 'degraded'
+            });
+            const values = Object.values(data) as string[];
+            setGlobalStatus(values.some(s => s === 'degraded') ? 'degraded' : 'online');
+          }
         } else {
-          setStatus('degraded');
+          if (mounted) {
+            setStatuses({ frontend: 'degraded', database: 'degraded', worker: 'degraded', websocket: 'degraded' });
+            setGlobalStatus('degraded');
+          }
         }
       } catch {
-        setStatus('degraded');
+        if (mounted) {
+          setStatuses({ frontend: 'degraded', database: 'degraded', worker: 'degraded', websocket: 'degraded' });
+          setGlobalStatus('degraded');
+        }
       }
     };
     checkStatus();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
@@ -29,14 +62,14 @@ export default function StatusPage() {
       {/* Background Effects */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full overflow-hidden pointer-events-none">
         <div className={`absolute top-[20%] left-[30%] w-[40%] h-[40%] blur-[150px] rounded-full mix-blend-screen transition-colors duration-1000 ${
-          status === 'online' ? 'bg-accent-green/10' : status === 'degraded' ? 'bg-accent-red/10' : 'bg-text-muted/10'
+          globalStatus === 'online' ? 'bg-accent-green/10' : globalStatus === 'degraded' ? 'bg-accent-red/10' : 'bg-text-muted/10'
         }`} />
       </div>
 
       {/* Navigation */}
       <nav className="relative z-10 w-full px-6 md:px-12 py-6 flex justify-between items-center max-w-7xl mx-auto border-b border-border/50">
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-cyan to-accent-blue flex items-center justify-center shadow-[0_0_15px_rgba(0,240,255,0.3)] group-hover:shadow-[0_0_25px_rgba(0,240,255,0.5)] transition-all">
+          <div className="w-8 h-8 rounded-lg bg-linear-to-br from-accent-cyan to-accent-blue flex items-center justify-center shadow-[0_0_15px_rgba(0,240,255,0.3)] group-hover:shadow-[0_0_25px_rgba(0,240,255,0.5)] transition-all">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
@@ -51,19 +84,19 @@ export default function StatusPage() {
       {/* Content */}
       <section className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 text-center max-w-4xl mx-auto py-20">
         <div className="mb-8">
-          {status === 'checking' && (
+          {globalStatus === 'checking' && (
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-bg-input text-text-muted text-sm font-mono animate-pulse">
               <span className="w-2 h-2 rounded-full bg-text-muted"></span>
               Checking Systems...
             </div>
           )}
-          {status === 'online' && (
+          {globalStatus === 'online' && (
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-accent-green/30 bg-accent-green/10 text-accent-green text-sm font-mono shadow-[0_0_15px_rgba(0,255,128,0.2)]">
               <span className="w-2 h-2 rounded-full bg-accent-green animate-pulse"></span>
               All Systems Operational
             </div>
           )}
-          {status === 'degraded' && (
+          {globalStatus === 'degraded' && (
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-accent-red/30 bg-accent-red/10 text-accent-red text-sm font-mono shadow-[0_0_15px_rgba(255,64,64,0.2)]">
               <span className="w-2 h-2 rounded-full bg-accent-red animate-pulse"></span>
               Partial Outage Detected
@@ -72,15 +105,15 @@ export default function StatusPage() {
         </div>
 
         <h1 className="text-4xl md:text-5xl font-black mb-12 tracking-tight leading-tight">
-          System <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-cyan to-accent-blue">Status</span>
+          System <span className="text-transparent bg-clip-text bg-linear-to-r from-accent-cyan to-accent-blue">Status</span>
         </h1>
 
         <div className="w-full text-left space-y-4">
           {[
-            { component: 'Next.js Frontend (Vercel)', status: 'online' },
-            { component: 'Supabase Database', status: 'online' },
-            { component: 'Scan Worker Pool (AWS)', status: status },
-            { component: 'WebSocket Streaming', status: status }
+            { component: 'Next.js Frontend (Vercel)', status: statuses.frontend },
+            { component: 'Supabase Database', status: statuses.database },
+            { component: 'Scan Worker Pool (AWS)', status: statuses.worker },
+            { component: 'WebSocket Streaming', status: statuses.websocket }
           ].map((item, i) => (
             <div key={i} className="card-glass p-4 flex items-center justify-between">
               <span className="font-bold">{item.component}</span>
