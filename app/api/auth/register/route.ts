@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       email: email.trim().toLowerCase(),
       name: name.trim(),
       passwordHash,
-      role: 'analyst' as const,
+      role: 'admin' as const,
     };
 
     const newUser = await addUser(user);

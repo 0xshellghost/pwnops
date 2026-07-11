@@ -55,7 +55,7 @@ export default function IntegrationsPage() {
   };
 
   return (
-    <div className="animate-fade-in space-y-6">
+    <div className="space-y-6">
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-2xl font-bold">Integrations</h1>
