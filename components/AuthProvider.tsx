@@ -30,20 +30,23 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUser = useCallback(async () => {
+  const fetchUser = useCallback(async (retryCount: number = 0) => {
     try {
       const res = await fetch('/api/auth/me');
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
+      } else if (res.status === 429 && retryCount < 3) {
+        console.warn('Rate limited while checking auth state. Retrying...');
+        setTimeout(() => void fetchUser(retryCount + 1), 2000);
+        return; // Exit early to prevent setLoading(false)
       } else {
         setUser(null);
       }
     } catch {
       setUser(null);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
