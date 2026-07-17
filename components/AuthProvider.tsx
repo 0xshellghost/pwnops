@@ -99,7 +99,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   };
 
   const logout = async () => {
-    await fetch('/api/auth/me', { method: 'DELETE' });
+    await fetch('/api/auth/logout', { method: 'POST' });
     setUser(null);
     window.location.href = '/login';
   };
