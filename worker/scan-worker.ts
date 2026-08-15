@@ -500,7 +500,7 @@ async function start() {
 
   const server = createServer((req, res) => {
     // Health check — unauthenticated (needed for Docker/load balancer health probes)
-    if (req.url === '/' && req.method === 'GET') {
+    if ((req.url === '/' || req.url === '/health') && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ status: 'healthy', worker: WORKER_ID }));
       return;

@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/store';
 
 export async function GET(request: Request) {
-  const workerUrl = process.env.WORKER_URL || process.env.RENDER_WORKER_URL;
+  const workerUrl = process.env.WORKER_URL || process.env.RENDER_WORKER_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:10000' : undefined);
 
   let workerStatus = 'degraded';
   let dbStatus = 'degraded';
