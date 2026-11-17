@@ -1,8 +1,5 @@
-// ──────────────────────────────────────────────────────────
-// PwnOps — Register API
-// ──────────────────────────────────────────────────────────
 import bcrypt from 'bcryptjs';
-import { findUserByEmail, addUser } from '@/lib/store';
+import { findUserByEmail, addUser, prisma } from '@/lib/store';
 import { signToken, buildCookieHeader } from '@/lib/auth';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -65,11 +62,18 @@ export async function POST(request: Request) {
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
+    let targetRole: 'admin' | 'analyst' = 'admin';
+    if (body.organizationId) {
+      const userCount = await prisma.user.count({ where: { organizationId: body.organizationId } });
+      targetRole = userCount === 0 ? 'admin' : 'analyst';
+    }
+
     const user = {
       email: email.trim().toLowerCase(),
       name: name.trim(),
       passwordHash,
-      role: 'admin' as const,
+      role: targetRole,
+      organizationId: body.organizationId || null,
     };
 
     const newUser = await addUser(user);

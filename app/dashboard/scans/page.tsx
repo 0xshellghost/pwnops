@@ -16,6 +16,9 @@ const TOOL_ICONS: Record<string, string> = {
   'nmap-recon': '⊕',
   'testssl': '⊛',
   'lynis': '⊘',
+  'subfinder': '◈',
+  'nuclei': '⚡',
+  'whatweb': '◬',
 };
 
 const TOOL_PLACEHOLDERS: Record<string, string> = {
@@ -23,6 +26,9 @@ const TOOL_PLACEHOLDERS: Record<string, string> = {
   'nmap-recon': 'e.g. 10.0.0.0/24',
   'testssl': 'e.g. example.com or 10.0.0.1:443',
   'lynis': 'e.g. localhost',
+  'subfinder': 'e.g. example.com',
+  'nuclei': 'e.g. https://example.com or 10.0.0.1',
+  'whatweb': 'e.g. https://example.com',
 };
 
 export default function ScansPage() {
@@ -215,7 +221,6 @@ export default function ScansPage() {
         <p className="text-text-muted text-sm">Launch real infrastructure scans using industry-standard security tools.</p>
       </div>
 
-      {/* Tool Status Banner */}
       {toolsLoaded && (
         <div className={`card-glass p-3 flex items-center gap-3 ${availableTools.length > 0 ? 'border-accent-green/20' : 'border-accent-red/20'}`}>
           <span className={`w-2.5 h-2.5 rounded-full ${availableTools.length > 0 ? 'bg-accent-green animate-pulse-dot' : 'bg-accent-red'}`} />
@@ -231,7 +236,6 @@ export default function ScansPage() {
         </div>
       )}
 
-      {/* Scan Launcher */}
       <div className="card-glass p-4">
         <h3 className="font-bold mb-3">Launch New Scan</h3>
         <div className="space-y-3">
@@ -332,7 +336,6 @@ export default function ScansPage() {
         </div>
       </div>
 
-      {/* Scan History */}
       <div>
         <h3 className="font-bold mb-3">Scan History</h3>
         <div className="space-y-3 stagger">
@@ -354,7 +357,6 @@ export default function ScansPage() {
                 Target: {s.target}
               </div>
 
-              {/* Progress */}
               {(s.status === 'running' || s.status === 'queued') && (
                 <div className="mb-2">
                   <div className="flex justify-between text-xs mb-1">
@@ -370,7 +372,6 @@ export default function ScansPage() {
                 </div>
               )}
 
-              {/* Completed / Failed info */}
               {(s.status === 'completed' || s.status === 'failed') && (
                 <>
                   <div className="flex items-center gap-3 text-text-muted text-xs mb-2" style={{ fontFamily: 'var(--font-mono)' }}>
@@ -424,7 +425,6 @@ export default function ScansPage() {
           ))}
         </div>
         
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-5">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}

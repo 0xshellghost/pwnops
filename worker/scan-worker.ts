@@ -1,14 +1,3 @@
-// ──────────────────────────────────────────────────────────
-// PwnOps — Scan Worker
-// Standalone Node.js process that polls the database for
-// queued scans and executes them using real security tools.
-//
-// Run with: npx tsx worker/scan-worker.ts
-//
-// This process runs OUTSIDE of Next.js/Vercel on a machine
-// where nmap, testssl.sh, etc. are installed.
-// ──────────────────────────────────────────────────────────
-
 import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -17,13 +6,11 @@ import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { CronExpressionParser } from 'cron-parser';
 
-// ── Configuration ────────────────────────────────────────
 const POLL_INTERVAL_MS = Number(process.env.WORKER_POLL_INTERVAL) || 3000;
 const MAX_CONCURRENT_SCANS = Number(process.env.WORKER_MAX_CONCURRENT) || 3;
 const WORKER_ID = `worker-${process.pid}-${Date.now().toString(36)}`;
 const WEBHOOK_URL = process.env.WEBHOOK_URL || process.env.DISCORD_WEBHOOK_URL || process.env.SLACK_WEBHOOK_URL;
 
-// ── Database Connection ──────────────────────────────────
 if (!process.env.DATABASE_URL) {
   console.error('FATAL: DATABASE_URL is not set');
   process.exit(1);
@@ -36,7 +23,6 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-// ── State ────────────────────────────────────────────────
 let activeScanCount = 0;
 let isShuttingDown = false;
 let totalProcessed = 0;
@@ -96,8 +82,6 @@ async function processScheduledScans() {
     console.error(`[${WORKER_ID}] Error processing scheduled scans:`, err);
   }
 }
-
-// ── Main Loop ────────────────────────────────────────────
 
 async function pollForScans() {
   if (isShuttingDown) return;
@@ -187,31 +171,38 @@ async function processScan(scan: {
     // Update progress — starting
     await prisma.scan.update({
       where: { id },
-      data: { progress: 10, results: `[*] Initializing ${toolName} scan against ${target}...` },
+      data: { progress: 15, results: `[*] Initializing ${toolName} scan engine against ${target}...` },
     });
-    broadcastScanUpdate(id, 'running', 10, `[*] Initializing ${toolName} scan against ${target}...`, organizationId);
+    broadcastScanUpdate(id, 'running', 15, `[*] Initializing ${toolName} scan engine against ${target}...`, organizationId);
 
-    // Start a simulated progress interval to keep the UI moving
-    let currentProgress = 10;
-    const progressInterval = setInterval(async () => {
-      if (currentProgress < 90) {
-        currentProgress += Math.floor(Math.random() * 8) + 2; // Jump up by 2-9%
-        if (currentProgress > 90) currentProgress = 90;
+    // Track execution elapsed time and emit heartbeat
+    const startTime = Date.now();
+    let currentProgress = 20;
+    const progressHeartbeat = setInterval(async () => {
+      const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
+      if (currentProgress < 85) {
+        currentProgress = Math.min(85, currentProgress + 5);
         try {
           await prisma.scan.update({
             where: { id },
             data: { progress: currentProgress },
           });
-          broadcastScanUpdate(id, 'running', currentProgress, null, organizationId);
+          broadcastScanUpdate(
+            id,
+            'running',
+            currentProgress,
+            `[*] Executing ${toolName} against ${target} (${elapsedSec}s elapsed)...`,
+            organizationId
+          );
         } catch { /* ignore */ }
       }
-    }, 5000); // Update DB every 5 seconds
+    }, 4000);
 
-    // Execute the real scan (this blocks until completion)
+    // Execute the real scan
     const result = await executeScan(toolName, target);
 
-    // Stop the progress simulation
-    clearInterval(progressInterval);
+    // Stop the progress heartbeat
+    clearInterval(progressHeartbeat);
 
     // Fetch the previous successful scan for diffing
     const prevScan = await prisma.scan.findFirst({
@@ -408,11 +399,7 @@ async function sendWebhookAlert(toolName: string, target: string, diffAlert: str
   }
 }
 
-// ── Lifecycle ────────────────────────────────────────────
-
-// ── Watchdog ─────────────────────────────────────────────
-// Cleans up scans that are stuck in 'running' state because
-// a worker crashed or was forcefully restarted.
+// Cleans up scans stuck in running state if a worker crashed
 async function cleanZombieScans() {
   try {
     // 20 minutes ago (longer than our longest 15 min nuclei timeout)
@@ -489,10 +476,8 @@ async function start() {
   const port = process.env.PORT || 10000;
   const workerApiKey = process.env.WORKER_API_KEY;
 
-  // ── Auth Middleware ──
-  // All endpoints except GET / (health check) require API key
   function isAuthenticated(req: import('http').IncomingMessage): boolean {
-    if (!workerApiKey) return true; // No key configured = open (dev mode)
+    if (!workerApiKey) return true; // dev mode
     const authHeader = req.headers['x-api-key'] || req.headers['authorization'];
     const providedKey = typeof authHeader === 'string' ? authHeader.replace('Bearer ', '') : '';
     return providedKey === workerApiKey;
@@ -523,7 +508,6 @@ async function start() {
     res.end(JSON.stringify({ error: 'Not found' }));
   });
 
-  // ── WebSocket with Authentication ──
   wss = new WebSocketServer({ server });
   wss.on('connection', (ws, req) => {
     // Authenticate via query param: ws://host:port?key=YOUR_API_KEY

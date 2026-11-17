@@ -1,7 +1,3 @@
-// ──────────────────────────────────────────────────────────
-// PwnOps — Type Definitions
-// ──────────────────────────────────────────────────────────
-
 export type Role = 'admin' | 'analyst' | 'viewer';
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 export type IncidentStatus = 'new' | 'investigating' | 'containing' | 'resolved';

@@ -59,7 +59,13 @@ export default function IncidentsPage() {
     fetchIncidents();
   };
 
-  const createIncident = async (data: { title: string; description: string; severity: string }) => {
+  const createIncident = async (data: {
+    title: string;
+    description: string;
+    severity: string;
+    assigneeId?: string | null;
+    assigneeName?: string | null;
+  }) => {
     await fetch('/api/incidents', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -74,13 +80,11 @@ export default function IncidentsPage() {
 
   return (
     <div className="animate-fade-in">
-      {/* Header */}
       <div className="mb-4">
         <h1 className="text-xl font-bold">Incident Board</h1>
         <p className="text-text-muted text-sm">Manage active security threats and response workflows.</p>
       </div>
 
-      {/* Actions */}
       <div className="flex flex-wrap gap-3 mb-4">
         <div className="relative">
           <button
@@ -108,7 +112,6 @@ export default function IncidentsPage() {
         )}
       </div>
 
-      {/* Kanban Board - 4-column grid on desktop, horizontal scroll on mobile */}
       <div className="kanban-desktop flex lg:grid gap-4 overflow-x-auto lg:overflow-x-visible pb-4 -mx-4 px-4 lg:mx-0 lg:px-0" style={{ scrollSnapType: 'x mandatory' }}>
         {COLUMNS.map(col => {
           const colIncidents = filtered.filter(i => i.status === col.key);
@@ -147,10 +150,8 @@ export default function IncidentsPage() {
         })}
       </div>
 
-      {/* Create Modal */}
       {showModal && <CreateModal onClose={() => setShowModal(false)} onCreate={createIncident} />}
 
-      {/* Detail Modal */}
       {selectedIncident && (
         <IncidentDetailModal 
           incident={selectedIncident} 
@@ -165,23 +166,51 @@ export default function IncidentsPage() {
 
 function CreateModal({ onClose, onCreate }: {
   onClose: () => void;
-  onCreate: (data: { title: string; description: string; severity: string }) => void;
+  onCreate: (data: {
+    title: string;
+    description: string;
+    severity: string;
+    assigneeId?: string | null;
+    assigneeName?: string | null;
+  }) => void;
 }) {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [sev, setSev] = useState('high');
+  const [assigneeId, setAssigneeId] = useState('');
+  const [users, setUsers] = useState<Array<{ id: string; name: string; email: string; role: string }>>([]);
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    fetch('/api/users')
+      .then(r => r.json())
+      .then(d => {
+        if (d.users) setUsers(d.users);
+      })
+      .catch(console.error);
+  }, []);
 
   if (!mounted) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const selectedUser = users.find(u => u.id === assigneeId);
+    onCreate({
+      title,
+      description: desc,
+      severity: sev,
+      assigneeId: assigneeId || null,
+      assigneeName: selectedUser ? selectedUser.name : null,
+    });
+  };
 
   return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         <h2 className="text-xl font-bold mb-1">New Incident</h2>
         <p className="text-text-muted text-sm mb-4">Log a new security incident for triage.</p>
-        <form onSubmit={e => { e.preventDefault(); onCreate({ title, description: desc, severity: sev }); }} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label-mono block mb-1">Title</label>
             <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Incident title" className="input-field pl-4!" required />
@@ -190,6 +219,21 @@ function CreateModal({ onClose, onCreate }: {
             <label className="label-mono block mb-1">Description</label>
             <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Describe the incident..." rows={3}
               className="w-full p-3 bg-bg-input border border-border rounded-lg text-text-primary text-sm outline-none focus:border-accent-cyan resize-none" />
+          </div>
+          <div>
+            <label className="label-mono block mb-1">Assignee</label>
+            <select
+              value={assigneeId}
+              onChange={e => setAssigneeId(e.target.value)}
+              className="input-field pl-4! cursor-pointer"
+            >
+              <option value="">Unassigned</option>
+              {users.map(u => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({u.role.toUpperCase()})
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="label-mono block mb-1">Severity</label>

@@ -6,6 +6,13 @@ import { useAuth } from '@/components/AuthProvider';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { Incident, IncidentComment } from '@/lib/types';
 
+interface OrgUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 export default function IncidentDetailModal({
   incident,
   onClose,
@@ -22,6 +29,12 @@ export default function IncidentDetailModal({
   const [title, setTitle] = useState(incident.title);
   const [description, setDescription] = useState(incident.description);
   const [severity, setSeverity] = useState(incident.severity);
+  const [assigneeId, setAssigneeId] = useState(incident.assigneeId || '');
+  const [assigneeName, setAssigneeName] = useState(incident.assigneeName || '');
+  const [users, setUsers] = useState<OrgUser[]>([]);
+  const [mitigationSteps, setMitigationSteps] = useState<string[]>(incident.mitigationSteps || []);
+  const [newStepText, setNewStepText] = useState('');
+  const [stepLoading, setStepLoading] = useState(false);
   const [comments, setComments] = useState<IncidentComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
@@ -40,7 +53,13 @@ export default function IncidentDetailModal({
   };
 
   useEffect(() => {
-    fetchComments();
+    void fetchComments();
+    fetch('/api/users')
+      .then(r => r.json())
+      .then(d => {
+        if (d.users) setUsers(d.users);
+      })
+      .catch(console.error);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incident.id]);
 
@@ -49,7 +68,13 @@ export default function IncidentDetailModal({
     await fetch(`/api/incidents/${incident.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, description, severity }),
+      body: JSON.stringify({
+        title,
+        description,
+        severity,
+        assigneeId: assigneeId || null,
+        assigneeName: assigneeName || null,
+      }),
     });
     setIsEditing(false);
     setLoading(false);
@@ -62,6 +87,78 @@ export default function IncidentDetailModal({
       await fetch(`/api/incidents/${incident.id}`, { method: 'DELETE' });
       setLoading(false);
       onDelete(incident.id);
+    }
+  };
+
+  const handleToggleStep = async (index: number) => {
+    if (!canEdit || stepLoading) return;
+    setStepLoading(true);
+
+    const step = mitigationSteps[index];
+    const isChecked = step.startsWith('[x] ') || step.startsWith('✓ ');
+    const rawText = step.replace(/^(\[x\]|\[ \]|✓)\s*/, '');
+    const updatedStep = isChecked ? `[ ] ${rawText}` : `[x] ${rawText}`;
+
+    const newSteps = [...mitigationSteps];
+    newSteps[index] = updatedStep;
+    setMitigationSteps(newSteps);
+
+    try {
+      await fetch(`/api/incidents/${incident.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mitigationSteps: newSteps }),
+      });
+      onUpdate();
+    } catch (err) {
+      console.error('Failed to update mitigation step:', err);
+    } finally {
+      setStepLoading(false);
+    }
+  };
+
+  const handleAddStep = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStepText.trim() || !canEdit || stepLoading) return;
+    setStepLoading(true);
+
+    const stepToAdd = `[ ] ${newStepText.trim()}`;
+    const newSteps = [...mitigationSteps, stepToAdd];
+    setMitigationSteps(newSteps);
+    setNewStepText('');
+
+    try {
+      await fetch(`/api/incidents/${incident.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mitigationSteps: newSteps }),
+      });
+      onUpdate();
+    } catch (err) {
+      console.error('Failed to add mitigation step:', err);
+    } finally {
+      setStepLoading(false);
+    }
+  };
+
+  const handleDeleteStep = async (index: number) => {
+    if (!canEdit || stepLoading) return;
+    setStepLoading(true);
+
+    const newSteps = mitigationSteps.filter((_, i) => i !== index);
+    setMitigationSteps(newSteps);
+
+    try {
+      await fetch(`/api/incidents/${incident.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mitigationSteps: newSteps }),
+      });
+      onUpdate();
+    } catch (err) {
+      console.error('Failed to delete mitigation step:', err);
+    } finally {
+      setStepLoading(false);
     }
   };
 
@@ -84,6 +181,8 @@ export default function IncidentDetailModal({
 
   if (!mounted) return null;
 
+  const completedStepsCount = mitigationSteps.filter(s => s.startsWith('[x] ') || s.startsWith('✓ ')).length;
+
   return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -102,14 +201,36 @@ export default function IncidentDetailModal({
               <label className="label-mono block mb-1">Description</label>
               <textarea value={description} onChange={e => setDescription(e.target.value)} rows={4} className="w-full p-3 bg-bg-input border border-border rounded-lg text-text-primary text-sm outline-none focus:border-accent-cyan resize-none" />
             </div>
-            <div>
-              <label className="label-mono block mb-1">Severity</label>
-              <select value={severity} onChange={e => setSeverity(e.target.value as Incident['severity'])} className="input-field pl-4!">
-                <option value="critical">Critical</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label-mono block mb-1">Severity</label>
+                <select value={severity} onChange={e => setSeverity(e.target.value as Incident['severity'])} className="input-field pl-4!">
+                  <option value="critical">Critical</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+              </div>
+              <div>
+                <label className="label-mono block mb-1">Assignee</label>
+                <select
+                  value={assigneeId}
+                  onChange={e => {
+                    const selId = e.target.value;
+                    setAssigneeId(selId);
+                    const u = users.find(user => user.id === selId);
+                    setAssigneeName(u ? u.name : '');
+                  }}
+                  className="input-field pl-4!"
+                >
+                  <option value="">Unassigned</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} ({u.role.toUpperCase()})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="flex gap-2">
               <button onClick={handleUpdate} disabled={loading} className="btn-primary text-xs">Save Changes</button>
@@ -120,10 +241,13 @@ export default function IncidentDetailModal({
           <div className="mb-6 space-y-4">
             <div>
               <h3 className="text-lg font-bold">{incident.title}</h3>
-              <div className="flex gap-2 mt-2">
-                <span className={`badge badge-${incident.severity}`}>{incident.severity.toUpperCase()}</span>
-                <span className="badge badge-info">{incident.status.toUpperCase()}</span>
-                <span className="text-xs text-text-muted font-mono mt-1">ID: #{incident.numericId}</span>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <span className={`badge badge-${incident.severity}`}>● {incident.severity.toUpperCase()}</span>
+                <span className="badge badge-info">◉ {incident.status.toUpperCase()}</span>
+                <span className="text-xs text-text-muted font-mono">ID: #{incident.numericId}</span>
+                <span className="text-xs text-text-muted ml-auto">
+                  Assignee: <span className="text-text-primary font-semibold">{incident.assigneeName || 'Unassigned'}</span>
+                </span>
               </div>
             </div>
             <div className="bg-bg-input p-3 rounded-lg border border-border">
@@ -136,6 +260,82 @@ export default function IncidentDetailModal({
             </div>
           </div>
         )}
+
+        <hr className="border-border my-6" />
+
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-md font-bold flex items-center gap-2">
+              <span>Remediation Checklist</span>
+              {mitigationSteps.length > 0 && (
+                <span className="text-xs font-normal text-text-muted">
+                  ({completedStepsCount}/{mitigationSteps.length} complete)
+                </span>
+              )}
+            </h3>
+          </div>
+
+          <div className="space-y-2 mb-3">
+            {mitigationSteps.map((step, idx) => {
+              const isChecked = step.startsWith('[x] ') || step.startsWith('✓ ');
+              const cleanText = step.replace(/^(\[x\]|\[ \]|✓)\s*/, '');
+              return (
+                <div
+                  key={idx}
+                  className={`flex items-center justify-between p-2.5 rounded-lg border text-sm transition-colors ${
+                    isChecked
+                      ? 'bg-accent-green/5 border-accent-green/20 text-text-muted line-through'
+                      : 'bg-bg-input border-border text-text-primary'
+                  }`}
+                >
+                  <label className="flex items-center gap-3 cursor-pointer flex-1">
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      disabled={!canEdit || stepLoading}
+                      onChange={() => handleToggleStep(idx)}
+                      className="accent-accent-cyan cursor-pointer w-4 h-4 rounded"
+                    />
+                    <span>{cleanText}</span>
+                  </label>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteStep(idx)}
+                      className="text-text-muted hover:text-accent-red text-sm px-1.5 py-0.5 rounded transition-colors ml-2"
+                      title="Remove step"
+                    >
+                      &times;
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            {mitigationSteps.length === 0 && (
+              <p className="text-sm text-text-muted italic bg-bg-input p-3 rounded-lg border border-border">
+                No remediation steps assigned yet. Add specific mitigation procedures below.
+              </p>
+            )}
+          </div>
+
+          {canEdit && (
+            <form onSubmit={handleAddStep} className="flex gap-2">
+              <input
+                value={newStepText}
+                onChange={e => setNewStepText(e.target.value)}
+                placeholder="Add remediation step (e.g. Apply patch KB5004945)..."
+                className="input-field flex-1 pl-4! text-sm"
+              />
+              <button
+                type="submit"
+                disabled={!newStepText.trim() || stepLoading}
+                className="btn-outline text-xs whitespace-nowrap px-3 hover:border-accent-cyan hover:text-accent-cyan"
+              >
+                + Add Step
+              </button>
+            </form>
+          )}
+        </div>
 
         <hr className="border-border my-6" />
         

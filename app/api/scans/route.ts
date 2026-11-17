@@ -1,8 +1,3 @@
-// ──────────────────────────────────────────────────────────
-// PwnOps — Scans API
-// Control plane for scan orchestration. The actual tool
-// execution happens in the scan worker process.
-// ──────────────────────────────────────────────────────────
 import { getAuthUser } from '@/lib/auth';
 import { getScans, addScan, getThreatFeed, logAudit } from '@/lib/store';
 import { validateTargetSafe, validateToolName } from '@/lib/scan-engine';

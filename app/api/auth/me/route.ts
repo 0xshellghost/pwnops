@@ -1,6 +1,3 @@
-// ──────────────────────────────────────────────────────────
-// PwnOps — Current User API
-// ──────────────────────────────────────────────────────────
 import { getAuthUser } from '@/lib/auth';
 
 export async function GET(request: Request) {

@@ -1,6 +1,3 @@
-// ──────────────────────────────────────────────────────────
-// PwnOps — Login API
-// ──────────────────────────────────────────────────────────
 import bcrypt from 'bcryptjs';
 import { findUserByEmail, logAudit } from '@/lib/store';
 import { signToken, buildCookieHeader, signPreAuthToken } from '@/lib/auth';

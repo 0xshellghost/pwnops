@@ -1,18 +1,9 @@
-// ──────────────────────────────────────────────────────────
-// PwnOps — JWT Auth Helpers
-// ──────────────────────────────────────────────────────────
 import { SignJWT, jwtVerify } from 'jose';
 import { getUserById, prisma } from './store';
 import { createHash } from 'crypto';
 
-// ── Centralized JWT Secret ──────────────────────────────
-// CRITICAL: No fallback — crash loudly if JWT_SECRET is missing.
-// This is the single source of truth; proxy.ts imports from here.
 if (!process.env.JWT_SECRET) {
-  throw new Error(
-    'FATAL: JWT_SECRET environment variable is not set. ' +
-    'Generate one with: openssl rand -base64 32'
-  );
+  throw new Error('JWT_SECRET environment variable is missing.');
 }
 
 export const jwtSecret = new TextEncoder().encode(process.env.JWT_SECRET);

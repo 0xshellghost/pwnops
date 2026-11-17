@@ -59,14 +59,12 @@ export default function StatusPage() {
 
   return (
     <main className="min-h-screen bg-bg-base flex flex-col relative overflow-hidden">
-      {/* Background Effects */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full overflow-hidden pointer-events-none">
         <div className={`absolute top-[20%] left-[30%] w-[40%] h-[40%] blur-[150px] rounded-full mix-blend-screen transition-colors duration-1000 ${
           globalStatus === 'online' ? 'bg-accent-green/10' : globalStatus === 'degraded' ? 'bg-accent-red/10' : 'bg-text-muted/10'
         }`} />
       </div>
 
-      {/* Navigation */}
       <nav className="relative z-10 w-full px-6 md:px-12 py-6 flex justify-between items-center max-w-7xl mx-auto border-b border-border/50">
         <Link href="/" className="flex items-center gap-2 group">
           <div className="w-8 h-8 rounded-lg bg-linear-to-br from-accent-cyan to-accent-blue flex items-center justify-center shadow-[0_0_15px_rgba(0,240,255,0.3)] group-hover:shadow-[0_0_25px_rgba(0,240,255,0.5)] transition-all">
@@ -81,7 +79,6 @@ export default function StatusPage() {
         </Link>
       </nav>
 
-      {/* Content */}
       <section className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 text-center max-w-4xl mx-auto py-20">
         <div className="mb-8">
           {globalStatus === 'checking' && (
@@ -127,7 +124,6 @@ export default function StatusPage() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="relative z-10 border-t border-border/50 bg-bg-card/30 backdrop-blur-md py-8">
         <div className="max-w-7xl mx-auto px-6 md:px-12">
           <div className="flex justify-center gap-6 text-text-muted text-xs">

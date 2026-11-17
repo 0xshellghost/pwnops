@@ -29,19 +29,19 @@ function LoginContent() {
         unconfigured: 'External authentication is not configured.',
         invalid_state: 'Session expired or invalid. Please try again.',
       };
-      void setError(messages[oauthError] || 'Login failed. Please try again.');
+      setError(messages[oauthError] || 'Login failed. Please try again.');
     }
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    void setError('');
+    setError('');
     setLoading(true);
     try {
       if (requires2FA) {
         const res = await verify2FA(preAuthToken, twoFactorCode);
         if (res.ok) router.push('/dashboard');
-        else void setError(res.error || 'Verification failed');
+        else setError(res.error || 'Verification failed');
       } else {
         const res = await login(email, password);
         if (res.ok) {
@@ -52,11 +52,14 @@ function LoginContent() {
             router.push('/dashboard');
           }
         } else {
-          void setError(res.error || 'Login failed');
+          setError(res.error || 'Login failed');
         }
       }
-    } catch { void setError('Network error'); }
-    finally { setLoading(false); }
+    } catch {
+      setError('Network error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

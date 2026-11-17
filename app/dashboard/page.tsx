@@ -58,7 +58,7 @@ export default function DashboardHome() {
   async function simulateThreat() {
     try {
       await fetch('/api/simulate-threat', { method: 'POST' });
-      await void loadData();
+      await loadData();
     } catch (err) {
       console.error(err);
     }
@@ -91,10 +91,7 @@ export default function DashboardHome() {
   return (
     <div className="animate-fade-in flex flex-col pb-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* ─── Left Column (Main Metrics & Data) ─── */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Computed Metrics */}
           <div className="card-glass p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -121,7 +118,6 @@ export default function DashboardHome() {
             </div>
           </div>
 
-          {/* Recent Detections */}
           <div className="card-glass p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg">Recent Detections</h3>
@@ -154,7 +150,6 @@ export default function DashboardHome() {
             </div>
           </div>
 
-          {/* Scan Activity Summary */}
           <div className="card-glass p-6">
             <h3 className="font-bold text-lg mb-5">Scan Activity</h3>
             <div className="space-y-5">
@@ -177,9 +172,7 @@ export default function DashboardHome() {
           </div>
         </div>
 
-        {/* ─── Right Column (Widgets) ─── */}
         <div className="space-y-6">
-          {/* Active Incidents Donut */}
           <div className="card-glass p-6 flex flex-col items-center">
             <p className="label-mono text-center mb-6">Active Incidents</p>
             <div className="flex justify-center mb-6">
@@ -195,7 +188,6 @@ export default function DashboardHome() {
             </Link>
           </div>
 
-          {/* Live Threat Feed */}
           <div className="card-glass p-6">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
@@ -219,7 +211,6 @@ export default function DashboardHome() {
             </ul>
           </div>
 
-          {/* Quick Scan */}
           <div className="card-glass p-6">
             <h3 className="font-bold text-lg mb-2">Quick Scan</h3>
             <p className="text-text-muted text-sm mb-5 leading-relaxed">Initialize heuristic deep-dive on configured assets.</p>

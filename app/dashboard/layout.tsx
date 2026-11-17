@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import KeyboardShortcuts from '@/components/KeyboardShortcuts';
-
-// ── Navigation configuration with grouped sections ──
 const NAV_SECTIONS = [
   {
     title: 'Operations',
@@ -68,7 +66,6 @@ function isActive(pathname: string, href: string) {
   return pathname.startsWith(href);
 }
 
-// ── Breadcrumb builder ──
 function Breadcrumbs({ pathname }: { pathname: string }) {
   const crumbs = useMemo(() => {
     const map: Record<string, string> = {
@@ -163,17 +160,13 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className={`min-h-screen bg-bg-primary dashboard-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      {/* ── Offline Banner ── */}
       {isOffline && (
         <div className="bg-accent-amber text-bg-primary text-center text-xs font-bold py-1.5 animate-pulse-slow z-60 relative">
           ⚠️ You are currently offline. Some features may be unavailable.
         </div>
       )}
 
-
-      {/* ── Desktop Sidebar ── */}
       <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
-        {/* Brand */}
         <div className="sidebar-brand">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-accent-cyan shrink-0">
             <path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill="currentColor" opacity="0.2" stroke="currentColor" strokeWidth="1.5"/>
@@ -181,7 +174,6 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           <span className="text-accent-cyan font-bold text-lg" style={{ fontFamily: 'var(--font-mono)' }}>PwnOps</span>
         </div>
 
-        {/* Navigation Sections */}
         {NAV_SECTIONS.map(section => (
           <div key={section.title} className="sidebar-section">
             <div className="sidebar-section-title">{section.title}</div>
@@ -199,7 +191,6 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
         ))}
 
-        {/* Sidebar Footer — User */}
         <div className="sidebar-footer">
           {user && (
             <div className="flex items-center gap-3">
@@ -226,10 +217,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* ── Top Bar ── */}
       <header className="sticky top-0 z-40 top-bar-physical px-4 py-3">
         <div className="max-w-90rem mx-auto flex items-center justify-between w-full">
-          {/* Mobile: show brand. Desktop: show breadcrumbs */}
           <div className="flex items-center gap-3 lg:hidden">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-accent-cyan">
               <path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill="currentColor" opacity="0.2" stroke="currentColor" strokeWidth="1.5"/>
@@ -261,15 +250,12 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {/* ── Page Content ── */}
       <main className="px-4 py-4 max-w-90rem mx-auto w-full">
         {children}
       </main>
 
-      {/* ── Global Hotkeys ── */}
       <KeyboardShortcuts />
 
-      {/* ── Bottom Nav (Mobile Only — hidden on lg via CSS) ── */}
       <nav className="bottom-nav">
         <div className="bottom-nav-inner">
           {ALL_NAV_ITEMS.map(item => (

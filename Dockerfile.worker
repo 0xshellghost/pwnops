@@ -34,5 +34,7 @@ RUN npm install
 # (In a real production setup, you might only copy the necessary lib/ and worker/ files)
 COPY . .
 
+EXPOSE 10000
+
 # Start the worker process using tsx
 CMD ["npx", "tsx", "worker/scan-worker.ts"]

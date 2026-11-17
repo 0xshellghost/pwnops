@@ -108,7 +108,6 @@ export default function UsersPage() {
         <p className="text-text-muted text-sm">Manage operator access and role assignments.</p>
       </div>
 
-      {/* Current user profile card */}
       {me && (
         <div className="card-glass p-5">
           <div className="flex items-center gap-4">
@@ -129,7 +128,6 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* API Keys */}
       {isAdmin && (
         <div className="card-glass p-5">
           <h3 className="font-bold mb-3">API Keys</h3>
@@ -168,7 +166,6 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Team members */}
       <div>
         <div className="flex justify-between items-center mb-3">
           <h3 className="font-bold">All Operators ({users.length})</h3>
@@ -218,7 +215,6 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Add User Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="card-glass w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">

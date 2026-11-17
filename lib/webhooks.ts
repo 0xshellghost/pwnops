@@ -1,14 +1,28 @@
 import { prisma } from './store';
 
-function formatPayload(type: string, event: string, payload: any) {
+function extractRoutingKey(endpoint: string): string {
+  try {
+    const url = new URL(endpoint);
+    const keyParam = url.searchParams.get('routing_key') || url.searchParams.get('key');
+    if (keyParam) return keyParam;
+  } catch {
+    // Ignore invalid URL
+  }
+  const hexMatch = endpoint.match(/([a-f0-9]{32})/i);
+  return hexMatch ? hexMatch[1] : 'pwnops-pagerduty-routing-key';
+}
+
+function formatPayload(type: string, event: string, payload: Record<string, unknown>, endpoint?: string) {
   const timestamp = new Date().toISOString();
   
-  // Format details for chat platforms
   let details = '';
-  if (payload.incident) {
-    details = `Incident: **${payload.incident.title}**\nSeverity: ${payload.incident.severity}\nStatus: ${payload.incident.status}`;
-  } else if (payload.scan) {
-    details = `Scan on **${payload.scan.target}** using ${payload.scan.toolName}\nStatus: ${payload.scan.status}`;
+  const inc = payload.incident as { title?: string; severity?: string; status?: string } | undefined;
+  const scn = payload.scan as { target?: string; toolName?: string; status?: string } | undefined;
+
+  if (inc) {
+    details = `Incident: **${inc.title}**\nSeverity: ${inc.severity}\nStatus: ${inc.status}`;
+  } else if (scn) {
+    details = `Scan on **${scn.target}** using ${scn.toolName}\nStatus: ${scn.status}`;
   }
 
   switch (type) {
@@ -22,17 +36,19 @@ function formatPayload(type: string, event: string, payload: any) {
         content: `🚨 **PwnOps Alert: ${event}**\n${details}`
       };
 
-    case 'PAGERDUTY':
+    case 'PAGERDUTY': {
+      const routingKey = endpoint ? extractRoutingKey(endpoint) : 'pwnops-pagerduty-routing-key';
       return {
-        routing_key: "extracted-from-url", // Dummy, since PagerDuty usually expects the key in the URL or payload. For our implementation, PagerDuty integration URLs usually have the routing key embedded or they use standard webhooks. If the user provides a PagerDuty Events V2 URL, they usually include the routing key. Let's assume standard generic webhook for now or build the exact Events V2 format.
-        event_action: "trigger",
+        routing_key: routingKey,
+        event_action: 'trigger',
         payload: {
           summary: `PwnOps Alert: ${event}`,
-          source: "PwnOps",
-          severity: payload.incident?.severity === 'critical' ? 'critical' : 'warning',
+          source: 'PwnOps-SOC',
+          severity: inc?.severity === 'critical' ? 'critical' : 'warning',
           custom_details: payload
         }
       };
+    }
 
     case 'GENERIC_WEBHOOK':
     default:
@@ -44,13 +60,7 @@ function formatPayload(type: string, event: string, payload: any) {
   }
 }
 
-/**
- * Dispatches a webhook to all integrations subscribed to a specific event within an organization.
- * @param organizationId The organization ID
- * @param event The event name (e.g. INCIDENT_CREATED, SCAN_COMPLETED)
- * @param payload The payload to send
- */
-export async function dispatchWebhook(organizationId: string, event: string, payload: any) {
+export async function dispatchWebhook(organizationId: string, event: string, payload: Record<string, unknown>) {
   try {
     const integrations = await prisma.integration.findMany({
       where: {
@@ -63,21 +73,17 @@ export async function dispatchWebhook(organizationId: string, event: string, pay
 
     if (integrations.length === 0) return;
 
-    integrations.forEach(async (integration) => {
+    for (const integration of integrations) {
       try {
-        const bodyPayload = formatPayload(integration.type, event, payload);
+        const bodyPayload = formatPayload(integration.type, event, payload, integration.endpoint);
         
-        // If PagerDuty, we might need to extract routing key if they just put the base URL.
-        // But often users paste the full integration URL. Let's just send the body.
-        if (integration.type === 'PAGERDUTY') {
-          // Attempt to extract routing key from URL if possible, otherwise rely on the endpoint
-          const urlMatch = integration.endpoint.match(/([a-f0-9]{32})/);
-          if (urlMatch) {
-            (bodyPayload as any).routing_key = urlMatch[1];
-          }
+        // Normalize bare routing key to Events API v2 endpoint
+        let targetEndpoint = integration.endpoint;
+        if (integration.type === 'PAGERDUTY' && /^[a-f0-9]{32}$/i.test(integration.endpoint.trim())) {
+          targetEndpoint = 'https://events.pagerduty.com/v2/enqueue';
         }
 
-        await fetch(integration.endpoint, {
+        await fetch(targetEndpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -88,7 +94,7 @@ export async function dispatchWebhook(organizationId: string, event: string, pay
       } catch (err) {
         console.error(`Failed to dispatch webhook to ${integration.endpoint}:`, err);
       }
-    });
+    }
   } catch (err) {
     console.error('Error querying webhooks:', err);
   }

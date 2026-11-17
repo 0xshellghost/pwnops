@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { dispatchWebhook } from './webhooks';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -24,7 +24,7 @@ const createPrismaClient = () => {
 export const prisma = globalForPrisma.prisma || createPrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-// ── User CRUD ────────────────────────────────────────────
+// Users
 export async function getOrganizationById(id: string) { return prisma.organization.findUnique({ where: { id } }); }
 
 export async function getUsers(organizationId: string) { 
@@ -39,15 +39,22 @@ export async function addUser(u: {
   email: string;
   name: string;
   passwordHash: string;
-  role: string;
+  role?: string;
   organizationId?: string | null;
 }) {
   let orgId = u.organizationId;
+  let userRole = u.role;
   if (!orgId) {
     const org = await prisma.organization.create({ data: { name: `${u.name || 'User'}'s SOC Team` } });
     orgId = org.id;
+    if (!userRole) userRole = 'admin';
+  } else {
+    if (!userRole) {
+      const userCount = await prisma.user.count({ where: { organizationId: orgId } });
+      userRole = userCount === 0 ? 'admin' : 'analyst';
+    }
   }
-  return prisma.user.create({ data: { email: u.email, name: u.name, passwordHash: u.passwordHash, role: u.role, organizationId: orgId } });
+  return prisma.user.create({ data: { email: u.email, name: u.name, passwordHash: u.passwordHash, role: userRole || 'analyst', organizationId: orgId } });
 }
 export async function updateUserRole(id: string, role: string, organizationId: string) {
   const user = await prisma.user.findUnique({ where: { id } });
@@ -55,7 +62,7 @@ export async function updateUserRole(id: string, role: string, organizationId: s
   return prisma.user.update({ where: { id }, data: { role } });
 }
 
-// ── Incident CRUD ────────────────────────────────────────
+// Incidents
 export async function getIncidents(organizationId: string, page = 1, limit = 50) { 
   const skip = (page - 1) * limit;
   const [data, total] = await Promise.all([
@@ -126,12 +133,34 @@ export async function getComments(incidentId: string, organizationId: string) {
   });
 }
 
-// ── Vulnerability CRUD ───────────────────────────────────
-export async function getVulnerabilities(organizationId: string, page = 1, limit = 50) { 
+// Vulnerabilities
+export async function getVulnerabilities(
+  organizationId: string,
+  page = 1,
+  limit = 50,
+  filters?: { search?: string; severity?: string; status?: string }
+) { 
   const skip = (page - 1) * limit;
+  const where: Prisma.VulnerabilityWhereInput = { organizationId };
+
+  if (filters?.severity && filters.severity !== 'all') {
+    where.severity = filters.severity;
+  }
+  if (filters?.status && filters.status !== 'all') {
+    where.status = filters.status;
+  }
+  if (filters?.search && filters.search.trim()) {
+    const s = filters.search.trim();
+    where.OR = [
+      { cveId: { contains: s, mode: 'insensitive' } },
+      { title: { contains: s, mode: 'insensitive' } },
+      { affectedAsset: { contains: s, mode: 'insensitive' } },
+    ];
+  }
+
   const [data, total] = await Promise.all([
-    prisma.vulnerability.findMany({ where: { organizationId }, orderBy: { discoveredAt: 'desc' }, skip, take: limit }),
-    prisma.vulnerability.count({ where: { organizationId } })
+    prisma.vulnerability.findMany({ where, orderBy: { discoveredAt: 'desc' }, skip, take: limit }),
+    prisma.vulnerability.count({ where })
   ]);
   return { data, total, page, totalPages: Math.ceil(total / limit) };
 }
@@ -142,7 +171,7 @@ export async function updateVulnStatus(id: string, status: string, organizationI
   return prisma.vulnerability.update({ where: { id }, data: { status } });
 }
 
-// ── Scan CRUD ────────────────────────────────────────────
+// Scans
 export async function getScans(organizationId: string, page = 1, limit = 50) { 
   const skip = (page - 1) * limit;
   const [data, total] = await Promise.all([
@@ -182,12 +211,11 @@ export async function updateScan(id: string, update: Partial<Pick<Scan, 'progres
   return updatedScan;
 }
 
-// ── Threat Feed ──────────────────────────────────────────
+// Threat feed
 export async function getThreatFeed(organizationId: string) { return prisma.threatFeedEntry.findMany({ where: { organizationId }, orderBy: { timestamp: 'desc' } }); }
 
-// ── Seed Data ────────────────────────────────────────────
-// Seed is now a one-time explicit action, NOT called on every read.
-// Use `seedIfEmpty()` only from a startup script or a dedicated admin endpoint.
+// Seed data
+// Explicit one-time seed helper
 let seedPromise: Promise<void> | null = null;
 
 export async function seedIfEmpty() {
@@ -261,7 +289,7 @@ export async function seedIfEmpty() {
 
   return seedPromise;
 }
-// ── Audit Logging ────────────────────────────────────────
+// Audit logs
 export async function logAudit(entry: {
   userId: string;
   action: string;

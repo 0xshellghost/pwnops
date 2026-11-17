@@ -1,6 +1,3 @@
-// ──────────────────────────────────────────────────────────
-// PwnOps — Incidents API
-// ──────────────────────────────────────────────────────────
 import { getAuthUser } from '@/lib/auth';
 import { getIncidents, addIncident, updateIncidentStatus, logAudit } from '@/lib/store';
 

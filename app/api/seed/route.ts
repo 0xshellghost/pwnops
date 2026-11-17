@@ -1,6 +1,3 @@
-// ──────────────────────────────────────────────────────────
-// PwnOps — Database Seed API (admin-only)
-// ──────────────────────────────────────────────────────────
 import { getAuthUser } from '@/lib/auth';
 import { seedIfEmpty } from '@/lib/store';
 

@@ -1,6 +1,3 @@
-// ──────────────────────────────────────────────────────────
-// PwnOps — Users API
-// ──────────────────────────────────────────────────────────
 import { getAuthUser } from '@/lib/auth';
 import { getUsers, updateUserRole, addUser, findUserByEmail, getOrganizationById, logAudit } from '@/lib/store';
 import bcrypt from 'bcryptjs';

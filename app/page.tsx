@@ -21,7 +21,6 @@ export default function LandingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      {/* ─── Header ──────────────────────────────────── */}
       <header className="border-b border-border">
         <div className="max-w-6xl mx-auto w-full flex items-center justify-between px-5 py-4">
           <div className="flex items-center gap-2">
@@ -40,7 +39,6 @@ export default function LandingPage() {
       </header>
 
       <main className="flex-1">
-        {/* ─── Hero ────────────────────────────────────── */}
       <section className="hero-gradient">
         <div className="max-w-6xl mx-auto w-full px-5 pt-12 pb-8">
           <div className="flex items-center gap-2 mb-4">
@@ -71,7 +69,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── Features ────────────────────────────────── */}
       <section className="max-w-6xl mx-auto w-full px-5 py-10">
         <h2 className="label-mono text-accent-cyan mb-6">Mission Critical Intelligence</h2>
         <p className="text-text-secondary text-sm mb-8">
@@ -123,7 +120,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── Stats ───────────────────────────────────── */}
       <section className="px-5 py-8">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="stat-card text-center">
@@ -145,7 +141,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── SOC Dashboard Preview ───────────────────── */}
       <section className="max-w-6xl mx-auto w-full px-5 py-8">
         <div className="card-glass p-6">
           <h2 className="text-xl font-bold mb-2">The SOC Dashboard Reimagined</h2>
@@ -171,7 +166,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── CTA ─────────────────────────────────────── */}
       <section className="px-5 py-10 text-center">
         <Link href="/register" className="btn-primary w-full max-w-xs mx-auto">
           Get Started Free →
@@ -179,7 +173,6 @@ export default function LandingPage() {
       </section>
       </main>
 
-      {/* ─── Footer ──────────────────────────────────── */}
       <footer className="border-t border-border mt-8">
         <div className="max-w-6xl mx-auto w-full px-5 py-8">
           <div className="flex items-center justify-center gap-4 mb-4 text-text-muted text-xs" style={{ fontFamily: 'var(--font-mono)' }}>

@@ -1,16 +1,3 @@
-// ──────────────────────────────────────────────────────────
-// PwnOps — Scan Engine
-// Real tool execution with strict input validation.
-// Supports: nmap, testssl.sh, and custom config auditing.
-//
-// SECURITY CONTROLS:
-// 1. All inputs validated against strict regex patterns
-// 2. Uses execFile (not exec) — no shell interpolation
-// 3. Scan targets are limited to valid IPs, CIDRs, and FQDNs
-// 4. Execution timeouts prevent resource exhaustion
-// 5. Tool paths are whitelisted — no arbitrary command execution
-// ──────────────────────────────────────────────────────────
-
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { existsSync } from 'fs';
@@ -37,31 +24,18 @@ export interface ParsedOutput {
 
 const execFileAsync = promisify(execFile);
 
-// ── Tool Registry ────────────────────────────────────────
-// Only tools registered here can be executed. Each entry
-// defines the binary path, argument builder, output parser,
-// and execution constraints.
-
 export interface ToolDefinition {
-  /** Human-readable name shown in the UI */
   displayName: string;
-  /** Description for the scan launcher */
   description: string;
-  /** Resolve the binary path at runtime */
   resolveBinary: () => string | null;
-  /** Build the argument array from a validated target */
   buildArgs: (target: string, outputFile: string) => string[];
-  /** Parse raw tool output into a structured report string */
   parseOutput: (stdout: string, stderr: string, outputFile: string | null, target: string) => Promise<ParsedOutput>;
-  /** Max execution time in milliseconds */
   timeoutMs: number;
-  /** Whether this tool produces a separate output file (e.g. nmap -oX) */
   usesOutputFile: boolean;
 }
 
-// ── Input Validation ─────────────────────────────────────
-// These are intentionally strict. We only allow targets that
-// match well-known patterns for IPs, CIDR ranges, and FQDNs.
+// Target validation patterns
+// Restrict targets to valid IPv4, CIDR, or FQDN format.
 
 const VALID_IPV4 = /^(\d{1,3}\.){3}\d{1,3}$/;
 const VALID_CIDR = /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/;
@@ -159,10 +133,6 @@ export async function validateTargetSafe(raw: string): Promise<string | null> {
 /** Validate a tool name against the registry */
 export function validateToolName(name: string): boolean {
   return name in TOOL_REGISTRY;
-}
-
-// ── Tool Definitions ─────────────────────────────────────
-
 function findBinary(names: string[]): string | null {
   const searchPaths = [
     '/usr/bin/', '/usr/local/bin/', '/usr/sbin/',
@@ -178,8 +148,7 @@ function findBinary(names: string[]): string | null {
 }
 
 export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
-
-  // ─── Nmap — Network Discovery & Port Scanning ─────────
+  // Nmap - port scanning & version detection
   'nmap': {
     displayName: 'Nmap Port Scanner',
     description: 'TCP SYN scan with service/version detection',
@@ -200,13 +169,16 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
         return { formatted: '[!] Nmap did not produce output', vulnerabilities: [] };
       }
       const xml = await readFile(outputFile, 'utf-8');
-      return { formatted: parseNmapXml(xml), vulnerabilities: [] };
+      return {
+        formatted: parseNmapXml(xml),
+        vulnerabilities: extractNmapVulnerabilities(xml, target)
+      };
     },
     timeoutMs: 300_000, // 5 minutes
     usesOutputFile: true,
   },
 
-  // ─── Nmap Network Recon — Host Discovery ──────────────
+  // Nmap - host discovery
   'nmap-recon': {
     displayName: 'Nmap Network Recon',
     description: 'Host discovery scan across a subnet',
@@ -229,7 +201,7 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
     usesOutputFile: true,
   },
 
-  // ─── testssl.sh — SSL/TLS Analysis ────────────────────
+  // testssl.sh - TLS analysis
   'testssl': {
     displayName: 'testssl.sh SSL Audit',
     description: 'Comprehensive SSL/TLS configuration audit',
@@ -257,7 +229,7 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
     usesOutputFile: true,
   },
 
-  // ─── Lynis — System Configuration Audit ───────────────
+  // Lynis - system audit
   'lynis': {
     displayName: 'Lynis Config Audit',
     description: 'System hardening and configuration audit',
@@ -277,7 +249,7 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
     usesOutputFile: false,
   },
 
-  // ─── Subfinder — Subdomain Enumeration ───────────────
+  // Subfinder - passive DNS enumeration
   'subfinder': {
     displayName: 'Subfinder Subdomain Recon',
     description: 'Fast passive subdomain enumeration',
@@ -299,7 +271,7 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
     usesOutputFile: true,
   },
 
-  // ─── Nuclei — Vulnerability Scanning ─────────────────
+  // Nuclei - template-driven vulnerability scan
   'nuclei': {
     displayName: 'Nuclei Vulnerability Scan',
     description: 'Fast, template-based vulnerability scanner',
@@ -327,7 +299,7 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
     usesOutputFile: true,
   },
 
-  // ─── WhatWeb — Technology Stack Detection ────────────
+  // WhatWeb - technology stack detection
   'whatweb': {
     displayName: 'WhatWeb Tech Stack',
     description: 'Next generation web scanner for identifying technologies',
@@ -344,8 +316,6 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
   },
 };
 
-// ── Tool Execution ───────────────────────────────────────
-
 export interface ScanResult {
   success: boolean;
   output: string;
@@ -355,10 +325,6 @@ export interface ScanResult {
   toolVersion: string | null;
 }
 
-/**
- * Execute a scan tool against a validated target.
- * This function is the ONLY place where child processes are spawned.
- */
 export async function executeScan(
   toolName: string,
   rawTarget: string,
@@ -476,9 +442,6 @@ export async function executeScan(
   }
 }
 
-// ── Output Parsers ───────────────────────────────────────
-
-/** Parse nmap XML output into a human-readable port table */
 function parseNmapXml(xml: string): string {
   const lines: string[] = [];
   
@@ -552,6 +515,155 @@ function parseNmapXml(xml: string): string {
   }
 
   return lines.join('\n');
+}
+
+/** Correlate discovered open ports, services, and versions to known security findings */
+function extractNmapVulnerabilities(xml: string, target: string): ExtractedVulnerability[] {
+  const vulns: ExtractedVulnerability[] = [];
+  const portMatches = xml.match(/<port[^>]*>[\s\S]*?<\/port>/g) || [];
+
+  for (const portBlock of portMatches) {
+    const portNum = parseInt(portBlock.match(/portid="(\d+)"/)?.[1] || '0', 10);
+    const state = portBlock.match(/<state state="([^"]*)"/)?.[1] || '';
+    if (state !== 'open') continue;
+
+    const service = (portBlock.match(/<service name="([^"]*)"/)?.[1] || '').toLowerCase();
+    const product = portBlock.match(/product="([^"]*)"/)?.[1] || '';
+    const version = portBlock.match(/version="([^"]*)"/)?.[1] || '';
+    const fullServiceDesc = `${product} ${version}`.trim() || service || `Port ${portNum}`;
+
+    // 1. Telnet - Cleartext Management
+    if (portNum === 23 || service === 'telnet') {
+      vulns.push({
+        cveId: 'CWE-319-TELNET',
+        version: version || 'Legacy',
+        title: `Cleartext Telnet Service Exposed on Port ${portNum}`,
+        description: `Unencrypted Telnet daemon (${fullServiceDesc}) detected. All credentials and sessions transmit in cleartext across the network.`,
+        severity: 'high',
+        cvssScore: 7.5,
+        affectedAsset: target,
+      });
+    }
+
+    // 2. Unencrypted FTP
+    if (portNum === 21 || service === 'ftp') {
+      if (product.toLowerCase().includes('vsftpd') && version.includes('2.3.4')) {
+        vulns.push({
+          cveId: 'CVE-2011-2523',
+          version: '2.3.4',
+          title: 'vsftpd 2.3.4 Backdoor Command Execution',
+          description: 'vsftpd 2.3.4 contains a malicious backdoor on port 6200 triggered by smiley face in username.',
+          severity: 'critical',
+          cvssScore: 9.8,
+          affectedAsset: target,
+        });
+      } else {
+        vulns.push({
+          cveId: 'CWE-319-FTP',
+          version: version || '1.0',
+          title: `Plaintext FTP Service Exposed on Port ${portNum}`,
+          description: `FTP service (${fullServiceDesc}) detected without TLS encryption. Credentials can be intercepted via packet sniffing.`,
+          severity: 'medium',
+          cvssScore: 5.3,
+          affectedAsset: target,
+        });
+      }
+    }
+
+    // 3. Exposed In-Memory Stores
+    if (portNum === 6379 || service.includes('redis')) {
+      vulns.push({
+        cveId: 'CWE-306-REDIS',
+        version: version || 'In-Memory',
+        title: `Exposed Redis Datastore on Port ${portNum}`,
+        description: 'Redis in-memory store exposed publicly. Can allow unauthenticated data exfiltration and RCE via cron overwrite.',
+        severity: 'critical',
+        cvssScore: 9.1,
+        affectedAsset: target,
+      });
+    }
+
+    // 4. Exposed Databases
+    if (portNum === 27017 || service.includes('mongodb')) {
+      vulns.push({
+        cveId: 'CWE-306-MONGODB',
+        version: version || 'NoSQL',
+        title: `Exposed MongoDB Instance on Port ${portNum}`,
+        description: 'Publicly reachable MongoDB service detected. Risk of unauthorized database access and data leakage.',
+        severity: 'high',
+        cvssScore: 8.2,
+        affectedAsset: target,
+      });
+    } else if (portNum === 9200 || service.includes('elasticsearch')) {
+      vulns.push({
+        cveId: 'CWE-306-ELASTICSEARCH',
+        version: version || 'REST',
+        title: `Exposed Elasticsearch API on Port ${portNum}`,
+        description: 'Publicly reachable Elasticsearch cluster search API detected without edge authentication.',
+        severity: 'high',
+        cvssScore: 7.8,
+        affectedAsset: target,
+      });
+    } else if (portNum === 3306 || service.includes('mysql')) {
+      vulns.push({
+        cveId: 'CWE-284-MYSQL',
+        version: version || 'RDBMS',
+        title: `Public MySQL Server Exposed on Port ${portNum}`,
+        description: `MySQL database server (${fullServiceDesc}) accessible over public network interface.`,
+        severity: 'medium',
+        cvssScore: 6.5,
+        affectedAsset: target,
+      });
+    } else if (portNum === 5432 || service.includes('postgresql')) {
+      vulns.push({
+        cveId: 'CWE-284-POSTGRES',
+        version: version || 'RDBMS',
+        title: `Public PostgreSQL Server Exposed on Port ${portNum}`,
+        description: `PostgreSQL database server (${fullServiceDesc}) accessible over public network interface.`,
+        severity: 'medium',
+        cvssScore: 6.5,
+        affectedAsset: target,
+      });
+    }
+
+    // 5. SMB & RDP Exposure
+    if (portNum === 445 || service === 'microsoft-ds') {
+      vulns.push({
+        cveId: 'CVE-2017-0144',
+        version: version || 'SMBv1/v2',
+        title: 'Exposed SMB File Sharing Service on Port 445',
+        description: 'Server Message Block (SMB) port 445 exposed to network. Vulnerable to EternalBlue remote code execution if unpatched.',
+        severity: 'critical',
+        cvssScore: 9.8,
+        affectedAsset: target,
+      });
+    } else if (portNum === 3389 || service === 'ms-wbt-server') {
+      vulns.push({
+        cveId: 'CVE-2019-0708',
+        version: version || 'RDP',
+        title: 'Exposed Remote Desktop Protocol (RDP) on Port 3389',
+        description: 'RDP exposed to public network. High risk of credential brute-force attacks and BlueKeep pre-authentication RCE.',
+        severity: 'high',
+        cvssScore: 8.5,
+        affectedAsset: target,
+      });
+    }
+
+    // 6. Apache 2.4.49 / 2.4.50 Path Traversal & RCE
+    if (product.toLowerCase().includes('apache') && (version.includes('2.4.49') || version.includes('2.4.50'))) {
+      vulns.push({
+        cveId: 'CVE-2021-41773',
+        version,
+        title: 'Apache HTTP Server 2.4.49 Path Traversal & RCE',
+        description: 'Flaw in path normalization allows remote attackers to map URLs to files outside document root and execute CGI scripts.',
+        severity: 'critical',
+        cvssScore: 9.8,
+        affectedAsset: target,
+      });
+    }
+  }
+
+  return vulns;
 }
 
 /** Parse nmap host discovery XML */
@@ -777,6 +889,23 @@ function parseNucleiJson(raw: string, target: string): ParsedOutput {
       const cveDisplay = cves ? ` [${cves}]` : '';
       lines.push(`  ${icon} [${sev.padEnd(8)}] ${name}${cveDisplay}`);
       lines.push(`      Target: ${url}`);
+
+      if (['CRITICAL', 'HIGH', 'MEDIUM'].includes(sev)) {
+        const cveId = (Array.isArray(cveField) ? cveField[0] : cveField) || `NUCLEI-${(data['template-id'] || data.info?.name || 'VULN').toUpperCase().replace(/[^A-Z0-9-]/g, '_')}`;
+        const cvssScore = data.info?.classification?.['cvss-score']
+          ? Number(data.info.classification['cvss-score'])
+          : (sev === 'CRITICAL' ? 9.5 : sev === 'HIGH' ? 8.0 : 5.5);
+
+        vulnerabilities.push({
+          cveId: String(cveId).substring(0, 50),
+          version: String(data.info?.version || 'N/A').substring(0, 50),
+          title: String(name).substring(0, 200),
+          description: String(data.info?.description || name).substring(0, 1000),
+          severity: sev.toLowerCase() as 'critical' | 'high' | 'medium' | 'low',
+          cvssScore,
+          affectedAsset: target,
+        });
+      }
     } catch {
        lines.push(`  ? ${line}`);
     }
@@ -787,9 +916,6 @@ function parseNucleiJson(raw: string, target: string): ParsedOutput {
   return { formatted: lines.join('\n'), vulnerabilities };
 }
 
-// ── Availability Check ───────────────────────────────────
-
-/** Returns which tools are available on this system */
 export function getAvailableTools(): Array<{
   name: string;
   displayName: string;

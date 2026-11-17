@@ -1,6 +1,3 @@
-// ──────────────────────────────────────────────────────────
-// PwnOps — Logout API
-// ──────────────────────────────────────────────────────────
 import { getAuthUser, buildClearCookieHeader } from '@/lib/auth';
 import { logAudit } from '@/lib/store';
 
