@@ -133,6 +133,8 @@ export async function validateTargetSafe(raw: string): Promise<string | null> {
 /** Validate a tool name against the registry */
 export function validateToolName(name: string): boolean {
   return name in TOOL_REGISTRY;
+}
+
 function findBinary(names: string[]): string | null {
   const searchPaths = [
     '/usr/bin/', '/usr/local/bin/', '/usr/sbin/',
